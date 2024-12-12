@@ -1,0 +1,32 @@
+{
+  "name": "cypher-core",
+  "version": "1.0.0",
+  "description": "A shell interface for a fully autonomous AI agent featuring a light-weight agentic system relying on structured outputs to chain agents together.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "author": "bootoshi",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.1",
+    "@types/shell-quote": "^1.7.5",
+    "@types/ws": "^8.5.13"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@supabase/supabase-js": "^2.47.5",
+    "dotenv": "^16.4.7",
+    "js-yaml": "^4.1.0",
+    "openai": "^4.76.0",
+    "shell-quote": "^1.8.2",
+    "uuid": "^11.0.3",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.23.5"
+  }
+}
