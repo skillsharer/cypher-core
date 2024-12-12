@@ -30,8 +30,8 @@
     right: 0;
     bottom: 0;
     background:
-      linear-gradient(0deg, transparent 24%, rgba(78,0,139,0.3) 25%, rgba(78,0,139,0.3) 26%, transparent 27%, transparent 74%, rgba(78,0,139,0.3) 75%, rgba(78,0,139,0.3) 76%, transparent 77%, transparent),
-      linear-gradient(90deg, transparent 24%, rgba(78,0,139,0.3) 25%, rgba(78,0,139,0.3) 26%, transparent 27%, transparent 74%, rgba(78,0,139,0.3) 75%, rgba(78,0,139,0.3) 76%, transparent 77%, transparent);
+      linear-gradient(0deg, transparent 24%, rgba(255,140,0,0.3) 25%, rgba(255,140,0,0.3) 26%, transparent 27%, transparent 74%, rgba(255,140,0,0.3) 75%, rgba(255,140,0,0.3) 76%, transparent 77%, transparent),
+      linear-gradient(90deg, transparent 24%, rgba(255,140,0,0.3) 25%, rgba(255,140,0,0.3) 26%, transparent 27%, transparent 74%, rgba(255,140,0,0.3) 75%, rgba(255,140,0,0.3) 76%, transparent 77%, transparent);
     background-size: 50px 50px;
     animation: movegrid 10s linear infinite;
   }
@@ -39,6 +39,13 @@
   @keyframes movegrid {
     0% { background-position: 0 0, 0 0; }
     100% { background-position: 50px 50px, 50px 50px; }
+  }
+
+  /* Flicker animation for hover elements */
+  @keyframes flicker {
+    0% { opacity: 1; }
+    50% { opacity: 0.95; }
+    100% { opacity: 1; }
   }
 
   .sidebar, .main-container {
@@ -56,7 +63,7 @@
     background: #111;
   }
   ::-webkit-scrollbar-thumb {
-    background: #4e008b;
+    background: #FF8C00;
     border-radius: 4px;
   }
 
@@ -64,7 +71,7 @@
     width: 380px;
     display: flex;
     flex-direction: column;
-    border-right: 1px solid #4e008b;
+    border-right: 1px solid #FF8C00;
     overflow: hidden;
   }
 
@@ -80,7 +87,7 @@
   .agent-tabs {
     display: flex;
     flex-direction: row;
-    border-bottom: 1px solid #4e008b;
+    border-bottom: 1px solid #FF8C00;
     overflow-x: auto;
     white-space: nowrap;
     background: #000;
@@ -92,7 +99,7 @@
     font-weight: 500;
     user-select: none;
     color: #bbb;
-    border-right: 1px solid #4e008b;
+    border-right: 1px solid #FF8C00;
     transition: background 0.3s, color 0.3s;
     text-transform: uppercase;
     font-size: 13px;
@@ -105,9 +112,9 @@
   }
 
   .agent-tab.selected {
-    background: #4e008b;
+    background: #FF8C00;
     color: #fff;
-    box-shadow: inset 0 0 8px #7f00ff;
+    box-shadow: inset 0 0 8px #FFA500;
   }
 
   /* Top Panel (System Prompt area) */
@@ -115,7 +122,7 @@
     display: flex;
     flex-direction: column;
     padding: 15px;
-    border-bottom: 1px solid #4e008b;
+    border-bottom: 1px solid #FF8C00;
     background: #000;
     position: relative;
     overflow: hidden;
@@ -135,7 +142,7 @@
     content: "⚡";
     display: inline-block;
     margin-right: 8px;
-    color: #ff66ff;
+    color: #FFA500;
     font-size: 14px;
   }
 
@@ -145,7 +152,7 @@
     height: 2px;
     flex: 1;
     margin-left: 15px;
-    background: linear-gradient(to right, #4e008b, #7f00ff);
+    background: linear-gradient(to right, #FF8C00, #FFA500);
     border-radius: 2px;
   }
 
@@ -155,8 +162,8 @@
     font-size: 14px;
     border-radius: 4px;
     color: #cfcfcf;
-    border: 1px solid #4e008b;
-    box-shadow: 0 0 5px rgba(78,0,139,0.5);
+    border: 1px solid #FF8C00;
+    box-shadow: 0 0 5px rgba(255,140,0,0.5);
     margin-top: 10px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -178,7 +185,7 @@
     background: #000;
     padding: 10px;
     font-weight: 500;
-    border-bottom: 1px solid #4e008b;
+    border-bottom: 1px solid #FF8C00;
     text-align: center;
     color: #fff;
     letter-spacing: 1px;
@@ -193,7 +200,7 @@
     transform: translateX(-50%);
     width: 80%;
     height: 1px;
-    background: linear-gradient(to right, #4e008b, #7f00ff);
+    background: linear-gradient(to right, #FF8C00, #FFA500);
   }
 
   .chat-history {
@@ -213,7 +220,7 @@
     word-break: break-word;
     overflow-wrap: anywhere;
     color: #ddd;
-    border-left: 4px solid #4e008b;
+    border-left: 4px solid #FF8C00;
     transition: background 0.3s, transform 0.3s;
     position: relative;
   }
@@ -221,18 +228,19 @@
   .chat-message:hover {
     background: #1c1c1c;
     transform: translateX(2px);
+    animation: flicker 1s infinite;
   }
 
   .chat-message.system {
-    border-left: 4px solid #7f00ff;
+    border-left: 4px solid #FF4500; /* system: orange-red */
   }
 
   .chat-message.user {
-    border-left: 4px solid #33ccff;
+    border-left: 4px solid #FF8C00; /* user: darkorange */
   }
 
   .chat-message.assistant {
-    border-left: 4px solid #ff66ff;
+    border-left: 4px solid #FFA500; /* assistant: orange */
   }
 
   /* Main Content */
@@ -251,7 +259,7 @@
     justify-content: space-between;
     background: #000;
     padding: 10px 15px;
-    border-bottom: 1px solid #4e008b;
+    border-bottom: 1px solid #FF8C00;
   }
 
   .main-content-header h1 {
@@ -278,7 +286,7 @@
   .controls button {
     margin-left: 5px;
     background: #111;
-    border: 1px solid #4e008b;
+    border: 1px solid #FF8C00;
     color: #fff;
     padding: 5px 10px;
     border-radius: 4px;
@@ -289,8 +297,8 @@
   }
 
   .controls button:hover {
-    background: #4e008b;
-    box-shadow: 0 0 5px #7f00ff;
+    background: #FF8C00;
+    box-shadow: 0 0 5px #FFA500;
   }
 
   .main-chat {
@@ -318,9 +326,9 @@
     padding: 15px;
     border-radius: 4px;
     margin-bottom: 10px;
-    border-left: 4px solid #ff66ff;
+    border-left: 4px solid #FFA500;
     color: #ddd;
-    box-shadow: 0 0 5px rgba(78,0,139,0.5);
+    box-shadow: 0 0 5px rgba(255,140,0,0.5);
     transition: background 0.3s, transform 0.3s;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -329,6 +337,7 @@
   .ai-response:hover {
     background: #1c1c1c;
     transform: scale(1.01);
+    animation: flicker 1s infinite;
   }
 
   .logs-container {
@@ -336,7 +345,7 @@
     overflow: auto;
     margin-top: 10px;
     background: #000;
-    border-top: 1px solid #4e008b;
+    border-top: 1px solid #FF8C00;
     padding: 10px;
   }
 
@@ -349,6 +358,7 @@
 
   .log-entry:hover {
     background: #111;
+    animation: flicker 1s infinite;
   }
 
   .log-entry .timestamp {
@@ -356,9 +366,9 @@
     color: #bbb;
   }
 
-  .log-entry.error { color: #ff4444; }
-  .log-entry.info { color: #33ccff; }
-  .log-entry.debug { color: #66ff66; }
+  .log-entry.error { color: #FF4500; }
+  .log-entry.info { color: #FF8C00; }
+  .log-entry.debug { color: #FFD700; }
 
   .hidden {
     display: none;
@@ -372,7 +382,7 @@
 
   .log-level-toggle {
     padding: 4px 8px;
-    border: 1px solid #4e008b;
+    border: 1px solid #FF8C00;
     background: #111;
     color: #fff;
     border-radius: 4px;
@@ -384,14 +394,14 @@
   }
 
   .log-level-toggle:hover {
-    background: #4e008b;
-    box-shadow: 0 0 5px #7f00ff;
+    background: #FF8C00;
+    box-shadow: 0 0 5px #FFA500;
   }
 
   .log-level-toggle.active {
-    background: #4e008b;
-    border-color: #7f00ff;
-    box-shadow: 0 0 5px #7f00ff;
+    background: #FF8C00;
+    border-color: #FFA500;
+    box-shadow: 0 0 5px #FFA500;
   }
 
   .refresh-button {
@@ -400,7 +410,7 @@
 
   .raw-input-button {
     background: #111;
-    border: 1px solid #4e008b;
+    border: 1px solid #FF8C00;
     color: #fff;
     padding: 8px;
     margin: 0;
@@ -414,8 +424,8 @@
   }
 
   .raw-input-button:hover {
-    background: #4e008b;
-    box-shadow: 0 0 5px #7f00ff;
+    background: #FF8C00;
+    box-shadow: 0 0 5px #FFA500;
   }
 
   .raw-input-container {
@@ -427,9 +437,9 @@
     font-size: 12px;
     overflow: auto;
     max-height: 300px;
-    border: 1px solid #4e008b;
+    border: 1px solid #FF8C00;
     color: #cfcfcf;
-    box-shadow: 0 0 5px rgba(78,0,139,0.5);
+    box-shadow: 0 0 5px rgba(255,140,0,0.5);
   }
 
   .raw-input-container pre {

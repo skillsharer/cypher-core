@@ -1,4 +1,5 @@
 # Cypher Core System Documentation
+<img width="1728" alt="image (2)" src="https://github.com/user-attachments/assets/e353452f-5db0-4143-a309-b6a65335ba1d" />
 
 ## Overview
 
@@ -135,6 +136,8 @@ For agents that must return strictly formatted JSON (no tools):
    });
    ```
 
+   Note: Zod Schemas are automatically parsed to json and added to the end of a system prompt as a json object.
+
 2. **Create Agent Config**:
    ```typescript
    import { AgentConfig } from './types/agentSystem';
@@ -143,11 +146,7 @@ For agents that must return strictly formatted JSON (no tools):
      name: "StoryAgent",
      description: "An agent that returns a story in structured JSON",
      systemPromptTemplate: `
-     You are a story-telling agent. You must return your answer as a JSON object:
-     {
-       "title": "<string>",
-       "content": "<string>"
-     }
+     You are a story-telling agent.
      `
    };
    ```
