@@ -44,7 +44,7 @@ output_schema:
       description: "A short plan of what to do next."
     terminal_commands:
       type: string
-      description: "The full terminal command to execute, including all arguments and options."
+      description: "The full terminal command to execute, including all arguments and options. Wrap each parameter in double quotes."
   required:
     - internal_thought
     - plan

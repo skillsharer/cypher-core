@@ -3,17 +3,10 @@ import { Logger } from './util/logger';
 import { getCurrentTimestamp } from './util/formatTimestamps';
 import { executeCommand } from './terminal/executeCommand';
 import { EventEmitter } from 'events';
+import { registerCommands, generateHelpText } from './terminal/commandRegistry';
 
 interface Feature {
   loadFeatureCommands: () => Promise<any[]>;
-}
-
-let commandRegistry: any[] = [];
-function registerCommands(cmds: any[]) {
-  commandRegistry = commandRegistry.concat(cmds);
-}
-function generateHelpText() {
-  return "help                      - Displays available commands and usage information\n" + commandRegistry.map(c => c.name).join("\n");
 }
 
 interface TerminalCoreOptions {
@@ -75,51 +68,54 @@ export class TerminalCore extends EventEmitter {
       this.actionCount = 0;
       while (this.actionCount < this.maxActions) {
         const terminalCommandsHelp = generateHelpText();
-        const mergedVars = {
+        const filteredVariables = {
           ...this.dynamicVariables,
           current_timestamp: getCurrentTimestamp(),
           terminal_commands: terminalCommandsHelp
         };
 
-        const agentResult = await this.agent.run(undefined, mergedVars);
+        const agentResult = await this.agent.run(undefined, filteredVariables);
 
         if (agentResult.success) {
-          let assistantMessage = agentResult.output;
-          let userMessageContent: string | undefined;
+          // Agent provided structured output
+          if (agentResult.output) {
+            const { internal_thought, plan, terminal_commands } = agentResult.output;
 
-          let parsedOutput: any;
-          try {
-            parsedOutput = JSON.parse(assistantMessage);
-          } catch (err) {
-            parsedOutput = null;
-          }
+            // Log the agent's thought process and plan
+            Logger.debug('Agent Thought:', internal_thought);
+            Logger.debug('Agent Plan:', plan);
 
-          if (parsedOutput && parsedOutput.terminal_commands) {
-            const commands = parsedOutput.terminal_commands
-              .split(/[\n;]/)
-              .map((cmd: string) => cmd.trim())
-              .filter((cmd: string) => cmd.length > 0);
+            if (terminal_commands) {
+              try {
+                const commands = terminal_commands
+                  .split(/[\n;]/)
+                  .map((cmd: string) => cmd.trim())
+                  .filter((cmd: string) => cmd.length > 0);
 
-            for (const cmd of commands) {
-              const execResult = await executeCommand(cmd);
-              // Now treat the command output as a user message to the agent
-              // This ensures the agent sees the command results as user input
-              const feedbackResult = await this.agent.run(`{
-  "command": "${execResult.command}",
-  "output": "${execResult.output.replace(/\n/g, '\\n')}"
-}`, mergedVars);
-              if (feedbackResult.success) {
-                assistantMessage = feedbackResult.output;
-              } else {
-                Logger.error('Error feeding terminal logs back to agent:', feedbackResult.error);
+                for (const cmd of commands) {
+                  const result = await executeCommand(cmd);
+
+                  // Add the command output back as a user message
+                  this.agent.addUserMessage(`${getCurrentTimestamp()} - [TERMINAL LOG]\n\n${result.output}`);
+                }
+              } catch (error) {
+                Logger.error('Error executing terminal commands:', error);
+                // Feed error back to the agent as user message
+                this.agent.addUserMessage(`Error executing command: ${error}`);
               }
             }
-          }
 
-          this.emit('loop:iteration', {
-            userMessage: userMessageContent ? { content: userMessageContent } : undefined,
-            assistantMessage: assistantMessage ? { content: assistantMessage } : undefined
-          });
+            // Emit loop iteration event
+            this.emit('loop:iteration', {
+              assistantMessage: agentResult.output ? { content: JSON.stringify(agentResult.output) } : undefined
+            });
+
+          } else {
+            // If no structured output, just emit what we have
+            this.emit('loop:iteration', {
+              assistantMessage: agentResult.output ? { content: agentResult.output } : undefined
+            });
+          }
         } else {
           Logger.error('Agent Failed:', agentResult.error);
           break;

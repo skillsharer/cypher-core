@@ -3,7 +3,7 @@ import { loadAgentDefinition } from './agentsRegistry';
 import { OpenAIClient } from '../models/clients/OpenAiClient';
 import { AnthropicClient } from '../models/clients/AnthropicClient';
 import { FireworkClient } from '../models/clients/FireworkClient';
-import { ModelClient } from '../types/agentSystem';
+import { ModelClient, Message } from '../types/agentSystem';
 import * as z from 'zod';
 
 export class Agent {
@@ -56,6 +56,26 @@ export class Agent {
 
   public async run(userMessage?: string, dynamicVars?: { [key: string]: string }): Promise<{success: boolean; output: any; error?: string}> {
     return this.agent.run(userMessage, dynamicVars);
+  }
+
+  public loadChatHistory(messages: Message[]): void {
+    this.agent.loadChatHistory(messages);
+  }
+
+  public getLastAgentMessage(): Message | null {
+    return this.agent.getLastAgentMessage();
+  }
+
+  public getChatHistory(limit?: number): Message[] {
+    return this.agent.getChatHistory(limit);
+  }
+
+  public getFullChatHistory(): Message[] {
+    return this.agent.getFullChatHistory();
+  }
+
+  public addUserMessage(content: string) {
+    this.agent.addUserMessage(content);
   }
 }
 
