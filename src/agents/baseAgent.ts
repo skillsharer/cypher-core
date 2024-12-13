@@ -1,4 +1,4 @@
-import { Message, AgentConfig, ModelClient, ModelType, Tool, AgentRunResult, ToolOutputFromSchema } from '../types/agentSystem';
+import { Message, ModelClient, ModelType, Tool, AgentRunResult, ToolOutputFromSchema } from '../types/agentSystem';
 import { ModelAdapter } from '../models/adapters/ModelAdapter';
 import { OpenAIAdapter } from '../models/adapters/OpenAIAdapter';
 import { AnthropicAdapter } from '../models/adapters/AnthropicAdapter';
@@ -16,7 +16,15 @@ type JsonSchema7Object = {
   };
 };
 
-export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
+// Minimal config interface to hold what we load from YAML
+interface BaseConfig {
+  name: string;
+  description?: string;
+  systemPromptTemplate: string;
+  dynamicVariables: { [key: string]: string };
+}
+
+export class BaseAgent<T extends z.ZodTypeAny | null = null> {
   protected messageHistory: Message[] = [];
   protected tools: Tool[] = [];
   protected outputSchema: T | null;
@@ -24,15 +32,15 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
   protected modelType: ModelType;
   protected toolChoice: any;
   private modelAdapter: ModelAdapter;
-  protected config: AgentConfig;
-  private schemaJson?: any; // JSON schema from outputSchema
+  protected config: BaseConfig;
+  private schemaJson?: any;
   private logLevel: LogLevel;
   private agentId: string;
   private runData: any;
   private hasInjectedSchema: boolean = false;
 
   constructor(
-    config: AgentConfig,
+    config: BaseConfig,
     modelClient: ModelClient,
     outputSchema: T | null = null,
     logLevel: LogLevel = 'none'
@@ -43,7 +51,6 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
     this.logLevel = logLevel;
     this.modelType = modelClient.modelType;
 
-    // Initialize modelAdapter based on modelType
     switch (this.modelType) {
       case 'openai':
         this.modelAdapter = new OpenAIAdapter();
@@ -58,7 +65,6 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
         throw new Error(`Unsupported model type: ${this.modelType}`);
     }
 
-    // If we have a schema, convert it to JSON schema and extract just the properties
     if (this.outputSchema) {
       const fullSchema = zodToJsonSchema(this.outputSchema) as JsonSchema7Object;
       this.schemaJson = fullSchema.properties || {};
@@ -71,15 +77,12 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
       content: '',
     });
 
-    // Register this agent instance
     this.agentId = agentEventBus.registerAgent(config.name || 'Agent');
     
-    // Update initial system prompt
     if (config.systemPromptTemplate) {
       agentEventBus.updateAgentSystemPrompt(this.agentId, config.systemPromptTemplate);
     }
 
-    // Initialize runData
     this.runData = {};
   }
 
@@ -145,10 +148,9 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
   }
 
   protected compileSystemPrompt(
-    dynamicVariables?: { [key: string]: string | (() => string) }
+    dynamicVariables?: { [key: string]: string }
   ): string {
-    const { systemPromptTemplate } = this.config;
-    let prompt = systemPromptTemplate;
+    let prompt = this.config.systemPromptTemplate;
 
     const mergedVariables = {
       ...this.config.dynamicVariables,
@@ -165,11 +167,6 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
       }
     }
 
-    // NOTE: We do NOT condition on the presence of tools here anymore.
-    // We may always have a schema, but we only show it in system prompt if no tools are used.
-    // Actually, we can still show schema to the model. If tools exist, model can choose to function-call anyway.
-    // If you want to only show schema if no tools, you can conditionally append it later.
-    // For simplicity, we'll show schema always if it exists:
     if (this.outputSchema && this.schemaJson && this.tools.length === 0) {
       prompt += `\n\n## OUTPUT FORMAT\nYou MUST output valid JSON that conforms to the schema below.\n${JSON.stringify(this.schemaJson, null, 2)}`;
     }
@@ -188,7 +185,10 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
     return args;
   }
 
-  protected abstract defineTools(): void;
+  protected defineTools(): void {
+    // Tools now come from YAML if needed. For now, no default tools.
+    // In a real scenario, we could load tools from config, but here we have none.
+  }
 
   protected buildToolChoice() {
     this.toolChoice = this.modelAdapter.buildToolChoice(this.tools);
@@ -217,19 +217,14 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
       Logger.debug('[BaseAgent] Running agent with inputMessage:', inputMessage);
       this.runData.inputMessage = inputMessage;
 
-      // First define tools and toolChoice before we choose mode
       this.defineTools();
       this.buildToolChoice();
 
-      // Check if we have tools
       const hasTools = this.tools && this.tools.length > 0;
 
-      // Compile system prompt AFTER defining tools,
-      // so we know whether to show schema (only if no tools)
       const updatedSystemPrompt = this.compileSystemPrompt(dynamicVariables);
       this.runData.systemPrompt = updatedSystemPrompt;
 
-      // Modify the schema injection logic to only run once
       if (this.modelType === 'anthropic' && this.outputSchema && this.schemaJson && !hasTools && !this.hasInjectedSchema) {
         this.addAgentMessage(`Below is the JSON schema you must follow for the final answer:\n${JSON.stringify(this.schemaJson, null, 2)}\nYou must ONLY output JSON following this schema.`);
         this.hasInjectedSchema = true;
@@ -244,16 +239,14 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
 
       let params: any;
       if (!hasTools && this.outputSchema) {
-        // Schema mode (no tools, schema provided)
         params = this.modelAdapter.buildParams(
           this.messageHistory,
-          [], 
+          [],
           undefined,
           updatedSystemPrompt,
           this.outputSchema
         );
       } else {
-        // Tool mode (tools present) or fallback (no schema)
         params = this.modelAdapter.buildParams(
           this.messageHistory,
           hasTools ? this.formatTools() : [],
@@ -280,7 +273,6 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
       this.runData.aiMessage = aiMessage;
       this.runData.functionCall = functionCall;
 
-      // Format response
       if (functionCall) {
         formattedResponse += `## USED TOOL: ${functionCall.functionName}\n`;
         for (const [key, value] of Object.entries(functionCall.functionArgs)) {
@@ -289,9 +281,7 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
           formattedResponse += `${formattedKey}: ${formattedValue}\n`;
         }
       } else if (aiMessage?.content && !hasTools && this.outputSchema) {
-        // For structured output, store the raw JSON
         try {
-          // Validate that it's valid JSON but store the original string
           JSON.parse(aiMessage.content);
           formattedResponse = aiMessage.content;
         } catch (err) {
@@ -306,10 +296,8 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
         agentEventBus.updateAgentResponse(this.agentId, formattedResponse.trim());
       }
 
-      // Handle structured output parsing if in schema mode
       if (!hasTools && this.outputSchema) {
         if (functionCall) {
-          // If there's a functionCall in schema mode (unexpected but let's handle)
           try {
             const parsedArgs = this.outputSchema.parse(functionCall.functionArgs);
             Logger.debug('[BaseAgent] Parsed functionCall output successfully:', parsedArgs);
@@ -344,7 +332,6 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
         }
       }
 
-      // No structured output scenario, just return the formattedResponse
       return {
         success: true,
         output: formattedResponse as any,
@@ -442,26 +429,14 @@ export abstract class BaseAgent<T extends z.ZodTypeAny | null = null> {
     return clone(data);
   }
 
-  /**
-   * Returns chat history, optionally limited to the most recent messages
-   * @param limit Optional number of most recent messages to return
-   * @returns Array of Message objects
-   */
   public getChatHistory(limit?: number): Message[] {
-    // If no limit specified, return full history
     if (!limit) {
       return [...this.messageHistory];
     }
-
-    // Return last N messages, excluding system message
     const nonSystemMessages = this.messageHistory.filter(msg => msg.role !== 'system');
     return nonSystemMessages.slice(-limit);
   }
 
-  /**
-   * Returns the full chat history including system message
-   * @returns Array of Message objects
-   */
   public getFullChatHistory(): Message[] {
     return [...this.messageHistory];
   }

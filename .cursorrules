@@ -1,47 +1,75 @@
-Below is a concise guide explaining the Cypher Core codebase:
+Below is a concise guide explaining the Cypher Core codebase, updated to reflect the new YAML-based agent configuration and other enhancements:
 
 1. **Project Structure**:
-   - `src/agents`: Contains agent classes extending `BaseAgent` and defining their behavior.
-   - `src/models`: Houses model clients (OpenAI, Anthropic, Fireworks) and adapters that normalize their inputs/outputs.
-   - `src/features`: Contains feature modules that add new terminal commands (tools) for the agent.
-   - `src/terminal`: Handles command parsing, execution logic, and registry.
-   - `terminalCore.ts`: Manages a loop running the agent continuously and applying features.
-   - `config/agent.yaml`: Defines agent personality, banned phrases, and other configuration details.
-   - `index.ts`: Entry point for initializing and running the system (including Logger Server and TerminalCore).
+   - `src/agents`: Contains **agent YAML configuration files** (e.g., `myAgent.yaml`, `terminalAgent.yaml`) that define agent behaviors, personalities, and settings.
+   - `src/models`: Houses **model clients** (OpenAI, Anthropic, Fireworks) and **adapters** that normalize their inputs/outputs.
+   - `src/features`: Contains **feature modules** that add new terminal commands (tools) for the agent.
+   - `src/terminal`: Handles **command parsing**, **execution logic**, and **command registry**.
+   - `terminalCore.ts`: Manages a loop running the agent continuously and applying features, enabling **autonomous operation**.
+   - `src/gui`: Contains GUI components like `loggerGUI.html` for **real-time monitoring and logging**.
+   - `config/personality.yaml`: Defines **global personality traits** and dynamic variables shared among agents.
+   - `index.ts`: Entry point for initializing and running the system, including the Logger Server and `TerminalCore`.
 
-2. **BaseAgent**:
-   - Manages chat history and communicates with model clients.
-   - Can produce structured outputs (via Zod schemas) or call tools (via function calling).
-   - Define tools in `protected defineTools()` to give the agent new capabilities.
+2. **YAML-Based Agent Configuration**:
+   - Agents are defined entirely in **YAML files** located in `src/agents/` (e.g., `myAgent.yaml`).
+   - Each agent YAML file specifies:
+     - **Agent name and description**
+     - **Model/client selection** (e.g., OpenAI, Anthropic)
+     - **System prompt** with embedded dynamic variables and references to global personality variables
+     - **Main goals** and **dynamic variables**
+     - **Tools** (function-calling capabilities)
+     - Optional **structured output schemas**
+   - Agents can reference global variables from `personality.yaml` using placeholders like `{{from_personality:core_personality}}`.
 
-3. **Model Adapters & Clients**:
-   - Adapters standardize model interactions.
-   - Clients connect to external services like OpenAI, Anthropic, or Fireworks.
+3. **Global Personality and Dynamic Variables**:
+   - The `config/personality.yaml` file holds shared **personality traits** or variables.
+   - Agents can access these global variables to maintain consistent behavior and personality across different agents.
+
+4. **BaseAgent**:
+   - Manages **chat history** and communicates with **model clients**.
+   - Uses the configurations defined in the agent's YAML file.
+   - Can produce **structured outputs** (via JSON schemas) or **call tools** (via function calling).
+   - No need to hard-code agent configurations; they are loaded from YAML files.
+
+5. **Model Adapters & Clients**:
+   - **Adapters** standardize model interactions.
+   - **Clients** connect to external services like OpenAI, Anthropic, or Fireworks.
    - Switch model backends easily without rewriting agent logic.
 
-4. **Tools (Function Calling)**:
-   - Agents can call defined tools (functions) with parameters specified by JSON schemas.
+6. **Tools (Function Calling)**:
+   - Agents can call defined **tools** (functions) with parameters specified by **JSON schemas**.
    - Tools let the agent perform actions like searching the web or running terminal commands.
-   - Add new tools by creating a `Tool` object and registering it in an agent’s `defineTools()`.
+   - Add new tools by defining them in the agent's YAML file under the `tools` section.
 
-5. **TerminalCore & Features**:
-   - `TerminalCore` runs an agent in a loop, acting as a world interface (like a terminal).
-   - Features add commands to the terminal environment that the agent can invoke.
-   - Add a new feature by creating a `TerminalFeature` that returns `Command[]` objects and pass it to `TerminalCore`.
+7. **TerminalCore & Features**:
+   - `TerminalCore` runs an agent in a loop, acting as a **world interface** (like a terminal), enabling **autonomous operation**.
+   - **Features** add commands to the terminal environment that the agent can invoke.
+   - Add a new feature by creating a `TerminalFeature` in `src/features/` and implementing `loadFeatureCommands()` to return an array of `Command` definitions.
+   - Register features in the `TerminalCore` options when initializing.
 
-6. **GUI & Logging**:
-   - A built-in GUI (via `loggerServer.ts`) shows logs, system prompts, and chat history in real-time.
+8. **GUI & Logging**:
+   - A built-in GUI (via `src/gui/loggerGUI.html`) allows **real-time monitoring** of agent behavior, logs, system prompts, and history.
    - Use `Logger.enable()`, `Logger.disable()`, and `Logger.setLevel('debug')` to control log verbosity.
+   - Start the logger server in `loggerServer.ts` to access the GUI.
 
-7. **Adding a Feature**:
-   - Create a `.ts` file in `src/features/` that exports a `TerminalFeature`.
-   - Implement `loadFeatureCommands()` to return an array of `Command` definitions.
-   - Register it in the `TerminalCore` options.
+9. **Workflow**:
+   - **Define global personality traits** in `config/personality.yaml`.
+   - **Create or modify agent YAML files** in `src/agents/` to define agent behavior, personality, and goals.
+   - Add **tools** or **structured output schemas** as needed in the agent's YAML configuration.
+   - Run the agent via `TerminalCore` for continuous autonomous operation.
+   - Use **features** to extend agent capabilities by adding new commands.
+   - Monitor agent behavior using the **GUI** and iterate as necessary.
 
-8. **Workflow**:
-   - Start with a base agent, define personality and goals.
-   - Add tools or structured output schemas as needed.
-   - Run the agent via `TerminalCore` for autonomous operation.
-   - Observe behavior in the GUI and iterate.
+10. **Adding a New Agent**:
+    - Create a new YAML file in `src/agents/` (e.g., `myCustomAgent.yaml`).
+    - Define the agent's **personality**, **goals**, **model**, **tools**, and **dynamic variables**.
+    - No need to modify source code; the system will load the agent configuration from the YAML file.
 
-This high-level overview should make it easy to add features or help improve the Cypher Core system.
+11. **Extensibility and Modularity**:
+    - The YAML-based configuration allows for easy customization and addition of new agents without altering the codebase.
+    - Shared global variables promote consistency across agents.
+    - Modular design enables swapping out components like models and features seamlessly.
+
+12. **Running the System**:
+    - Use `index.ts` as the entry point to **initialize and run agents**, the `TerminalCore`, and the Logger Server.
+    - The system is designed to be **user-friendly** and easily customizable via configuration files.

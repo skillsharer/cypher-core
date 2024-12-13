@@ -1,0 +1,24 @@
+name: "ChatAgent"
+description: "A chat agent designed for natural conversations."
+client: "openai"
+model: "gpt-4o"
+
+system_prompt: |
+  # PERSONALITY
+  {{core_personality}}
+
+  # MAIN GOAL
+  {{main_goal}}
+
+  {{additional_info}}
+
+main_goal: "Have engaging and friendly conversations with the user."
+
+dynamic_variables:
+  core_personality: "{{from_personality:core_personality}}"
+  main_goal: "{{from_main_goal_config}}"
+  additional_info: "Current weather is sunny."
+
+output_schema: null
+
+tools: []
