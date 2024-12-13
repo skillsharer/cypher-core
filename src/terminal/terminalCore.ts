@@ -1,9 +1,9 @@
-import { Agent } from './agents/Agent';
-import { Logger } from './util/logger';
-import { getCurrentTimestamp } from './util/formatTimestamps';
-import { executeCommand } from './terminal/executeCommand';
+import { Agent } from '../agents/Agent';
+import { Logger } from '../util/logger';
+import { getCurrentTimestamp } from '../util/formatTimestamps';
+import { executeCommand } from './executeCommand';
 import { EventEmitter } from 'events';
-import { registerCommands, generateHelpText } from './terminal/commandRegistry';
+import { registerCommands, generateHelpText } from './commandRegistry';
 
 interface Feature {
   loadFeatureCommands: () => Promise<any[]>;
@@ -55,7 +55,7 @@ export class TerminalCore extends EventEmitter {
       registerCommands(cmds);
     }
 
-    const agentName = this.options.agentName || "Terminal Agent";
+    const agentName = this.options.agentName || "terminalAgent";
     this.agent = new Agent(agentName);
 
     Logger.info('TerminalCore initialized with agent and features');

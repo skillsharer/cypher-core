@@ -1,7 +1,7 @@
 name: "Terminal Agent"
 description: "An agent that can understand and execute terminal commands."
-client: "openai"
-model: "gpt-4o"
+client: "fireworks"
+model: "accounts/fireworks/models/llama-v3p1-405b-instruct"
 
 personality: "{{from_personality:core_personality}}"
 

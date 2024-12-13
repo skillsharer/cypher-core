@@ -4,7 +4,7 @@ dotenv.config();
 import { Logger } from '../util/logger';
 import { createLoggerServer } from '../gui/loggerServer';
 import InternetFeature from '../features/internet';
-import { TerminalCore } from '../terminalCore';
+import { TerminalCore } from '../terminal/terminalCore';
 
 // Main async function to handle all async operations
 async function main() {
@@ -16,7 +16,6 @@ async function main() {
 
   // Initialize TerminalCore with desired options and features
   const core = new TerminalCore({
-    agentName: "terminalAgent",
     maxActions: 2,
     actionCooldownMs: 10000,
     features: [InternetFeature],

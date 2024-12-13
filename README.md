@@ -53,28 +53,27 @@ core_personality: "This is the shared core personality that all agents can refer
 
 ### 2. Defining an Agent in One YAML File
 
-Example ```myAgent.yaml```:
+Example `myAgent.yaml`:
 
 ```yaml
 name: "MyAgent"
 description: "An agent specialized in friendly conversations."
 client: "openai"
-model: "gpt-4"
+model: "gpt-4o"
+
+personality: "{{from_personality:core_personality}}"
+main_goal: "Help the user with general information"
 
 system_prompt: |
   # PERSONALITY
-  {{core_personality}}
+  {{personality}}
 
   # MAIN GOAL
   {{main_goal}}
 
   {{additional_info}}
 
-main_goal: "Help the user with general information"
-
 dynamic_variables:
-  core_personality: "{{from_personality:core_personality}}"
-  main_goal: "Be as helpful and friendly as possible."
   additional_info: "No additional info at this time."
 
 output_schema: null
@@ -109,12 +108,18 @@ To run agents continuously:
 ```yaml
 name: "terminalAgent"
 description: "Agent with terminal capabilities"
-client: "openai"
-model: "gpt-4o"
+client: "fireworks"
+model: "accounts/fireworks/models/llama-v3p1-405b-instruct"
+
+personality: "{{from_personality:core_personality}}"
+main_goal: "Continuously perform tasks and gather information."
 
 system_prompt: |
+  You are an intelligent AI agent that is hooked up to a terminal in which you can freely run commands.
+  This terminal acts as your world interface, and is equipped with tools to interact with the real world.
+
   # PERSONALITY
-  {{core_personality}}
+  {{personality}}
 
   # MAIN GOAL
   {{main_goal}}
@@ -124,24 +129,26 @@ system_prompt: |
   # TERMINAL COMMANDS
   {{terminal_commands}}
 
-main_goal: "Continuously perform tasks and gather information."
-
 dynamic_variables:
-  core_personality: "{{from_personality:core_personality}}"
-  main_goal: "{{from_main_goal_config}}"
-  additional_dynamic_variables: ""
   terminal_commands: "{{from_terminal_commands}}"
+  additional_dynamic_variables: ""
 
 output_schema:
   type: object
   properties:
     internal_thought:
       type: string
+      description: "Your internal reasoning process about the next commands to run."
     plan:
       type: string
+      description: "A short plan of what to do next."
     terminal_commands:
       type: string
-  required: ["internal_thought", "plan", "terminal_commands"]
+      description: "The full terminal command to execute, including all arguments and options."
+  required:
+    - internal_thought
+    - plan
+    - terminal_commands
 
 tools: []
 ```
@@ -153,22 +160,24 @@ import { TerminalCore } from 'cypher-core';
 import InternetFeature from 'cypher-core/features/internet';
 
 const core = new TerminalCore({
-  agentName: "terminalAgent",
   maxActions: 10,
   actionCooldownMs: 10000,
   features: [InternetFeature],
 });
 
+// This lets us extract individual messages per iteration
 core.on('loop:iteration', (messages) => {
   console.log('Iteration messages:', messages);
 });
 
+// This lets us extract the full history of the loop after it finishes (typically for memory purposes)
 core.on('loop:maxActions', (fullHistory) => {
   console.log('Reached max actions for this cycle');
 });
 
 await core.init();
 
+// This lets us set dynamic variables before starting the loop, can add any variables you want to be available to the agent
 core.setDynamicVariables({
   additional_dynamic_variables: "## CURRENT SUMMARIES OF YOUR RECENT ACTIVITY\n\nSomething happened"
 });
@@ -177,6 +186,9 @@ await core.runLoop();
 ```
 
 ## Using the GUI Logger
+
+This spins up a local server that you can visit at ```http://localhost:3000``` to view the logs and messages of your agent.
+ANY agent defined in a run will automatically show up in the GUI.
 
 ```typescript
 import { createLoggerServer, Logger } from 'cypher-core';
