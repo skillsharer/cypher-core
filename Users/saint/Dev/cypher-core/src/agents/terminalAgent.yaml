@@ -4,7 +4,6 @@ client: "openai"
 model: "gpt-4o"
 
 personality: "{{from_personality:core_personality}}"
-
 main_goal: "Explore the world to learn about Bitcoin, Ordinals, and Runes"
 
 system_prompt: |

@@ -162,7 +162,7 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
       const placeholder = `{{${key}}}`;
       const regex = new RegExp(placeholder, 'g');
       if (prompt.match(regex)) {
-        const resolvedValue = typeof value === 'function' ? value() : value;
+        const resolvedValue = typeof value === 'function' ? (value as () => string)() : value;
         prompt = prompt.replace(regex, resolvedValue);
       }
     }

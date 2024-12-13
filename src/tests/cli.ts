@@ -1,11 +1,10 @@
 // Simple CLI interface to accept user input
 
 import readline from 'readline';
-import { executeCommand } from './src/terminal/executeCommand';
-import { Logger } from './src/util/logger';
-import { v4 as uuidv4 } from 'uuid';
-import { registerCommands } from './src/terminal/commandRegistry';
-import { help } from './src/terminal/commands/help';
+import { executeCommand } from '../terminal/executeCommand';
+import { Logger } from '../util/logger';
+import { registerCommands } from '../terminal/commandRegistry';
+import { help } from '../terminal/commands/help';
 
 Logger.enable();
 
