@@ -16,7 +16,7 @@ This framework emphasizes modularity and ease of customization. Agents are defin
 ## High-Level Architecture
 
 1. **Personality & Configuration via YAML**:  
-   Agents no longer require multiple separate files for personality, prompts, and config. Each agent is defined entirely in a single ```.yaml``` file, which includes:
+  Each agent is defined entirely in a single ```.yaml``` file, which includes:
    - Agent name & description
    - Model/client selection
    - System prompt with embedded references to global personality variables
@@ -40,14 +40,6 @@ This framework emphasizes modularity and ease of customization. Agents are defin
 
 4. **GUI & Logger**:  
    A built-in GUI allows you to monitor your agent’s behavior, view logs, system prompts, and last run data in real-time.
-
-## Why YAML?
-
-**Modularity & Ease of Use**:  
-By defining agents entirely in YAML, you avoid scattering configurations across multiple files. This approach lets you drop in a single ```.yaml``` file to define a new agent, or edit an existing YAML file to tweak behavior and personality. The personality and global variables are in ```personality.yaml```, and each agent (like ```terminalAgent.yaml```) references these shared variables dynamically.
-
-**Developer & User-Friendly**:  
-If this is a distributed package, your users can create their own ```personality.yaml``` and ```MyCustomAgent.yaml``` in a specified directory (or pass a path) without modifying source code. They can then run the system and immediately have a custom agent personality, behavior, and goals.
 
 ## Setting Up Your Agent
 
@@ -195,13 +187,3 @@ Logger.setLevel('debug');
 const loggerServer = createLoggerServer();
 await loggerServer.start(); // Visit http://localhost:3000
 ```
-
-## Conclusion
-
-- **Define personality globally** in ```personality.yaml```.
-- **Define each agent in a single YAML file** (e.g. ```myAgent.yaml```, ```terminalAgent.yaml```).
-- **No code changes required** to add a new agent—just add a new YAML file.
-- **TerminalCore** allows continuous, autonomous operation.
-- **GUI & Logging** provide real-time insights into agent behavior.
-
-With YAML-based configuration, users can quickly customize and deploy their own agents with minimal overhead.
