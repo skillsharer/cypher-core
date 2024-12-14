@@ -43,7 +43,45 @@ This framework emphasizes modularity and ease of customization. Agents are defin
 
 ## Setting Up Your Agent
 
-### 1. The ```personality.yaml``` File
+### 1. Loading Agents
+
+There are two main ways to load agent configurations:
+
+#### Option 1: Direct Config Path
+Specify the exact path to your agent's YAML config file:
+
+```typescript
+import { Agent } from 'cypher-core';
+
+const myAgent = new Agent({ 
+  agentConfigPath: './my_agents/mySpecialAgent.yaml' 
+});
+const result = await myAgent.run("Hello");
+```
+
+#### Option 2: Load by Agent Name
+Load an agent by name, which will search in your local agents directory and fall back to built-in agents:
+
+```typescript
+import { Agent } from 'cypher-core';
+
+const myAgent = new Agent({ agentName: "MyAgent" });
+const result = await myAgent.run("Hello");
+```
+
+**Built-in Fallbacks**: When using `agentName: "TerminalAgent"` or `agentName: "ChatAgent"`, Cypher Core will automatically use the built-in configurations if no custom configs are found.
+
+### 2. Configuration and Environment
+
+You can customize the agent loading behavior using environment variables:
+
+```bash
+# Set custom directories for agents and personality
+export AGENTS_DIR=./my_custom_agents
+export PERSONALITY_PATH=./my_custom_agents/personality.yaml
+```
+
+### 3. The `personality.yaml` File
 
 A global file defining the core personality and any other variables you want available to all agents.
 
@@ -51,7 +89,7 @@ A global file defining the core personality and any other variables you want ava
 core_personality: "This is the shared core personality that all agents can reference."
 ```
 
-### 2. Defining an Agent in One YAML File
+### 4. Defining an Agent in YAML
 
 Example `myAgent.yaml`:
 
@@ -85,12 +123,12 @@ In this example:
 - ```{{from_personality:core_personality}}``` pulls the ```core_personality``` value from ```personality.yaml```.
 - You can easily adjust ```tools``` or ```output_schema``` if needed.
 
-### 3. Running the Agent
+### 5. Running the Agent
 
 ```typescript
 import { Agent } from 'cypher-core'; // hypothetical package name
 
-const myAgent = new Agent("myAgent"); // Matches the filename myAgent.yaml
+const myAgent = new Agent({ agentName: "myAgent" }); // Matches the filename myAgent.yaml
 const result = await myAgent.run("Hello there!");
 if (result.success) {
   console.log("Agent response:", result.output);
