@@ -56,7 +56,7 @@ export class TerminalCore extends EventEmitter {
     }
 
     const agentName = this.options.agentName || "terminalAgent";
-    this.agent = new Agent(agentName);
+    this.agent = new Agent({ agentName });
 
     Logger.info('TerminalCore initialized with agent and features');
   }

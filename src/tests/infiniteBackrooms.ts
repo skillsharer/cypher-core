@@ -61,8 +61,8 @@ async function main() {
   // Create model clients with role-specific names
   const anthropicModel = 'claude-3-5-sonnet-20241022';
   const fireworksModel = 'accounts/fireworks/models/llama-v3p1-405b-instruct';
-  const cliUserClient = new FireworkClient(process.env.FIREWORKS_API_KEY, fireworksModel, {temperature: 1});
-  const cliAgentClient = new FireworkClient(process.env.FIREWORKS_API_KEY, fireworksModel, {temperature: 1});
+  const cliUserClient = new AnthropicClient(process.env.ANTHROPIC_API_KEY, anthropicModel, {temperature: 1});
+  const cliAgentClient = new AnthropicClient(process.env.ANTHROPIC_API_KEY, anthropicModel, {temperature: 1});
 
   // Create agents with new names
   const cliUser = new SimpleAgent(

@@ -12,8 +12,8 @@ Logger.enable();
   await loggerServer.start();
 
   // Create two instances of ChatAgent with different personalities
-  const agent1 = new Agent("ChatAgent");
-  const agent2 = new Agent("ChatAgent");
+  const agent1 = new Agent({ agentName: "ChatAgent" });
+  const agent2 = new Agent({ agentName: "ChatAgent" });
 
   // Initialize the conversation with a message
   let currentMessage = "DESECEND INTO MADNESS";

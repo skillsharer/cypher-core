@@ -1,16 +1,30 @@
 import { BaseAgent } from './baseAgent';
-import { loadAgentDefinition } from './agentsRegistry';
+import { loadAgentDefinition, loadAgentFromFile } from './agentsRegistry';
 import { OpenAIClient } from '../models/clients/OpenAiClient';
 import { AnthropicClient } from '../models/clients/AnthropicClient';
 import { FireworkClient } from '../models/clients/FireworkClient';
 import { ModelClient, Message } from '../types/agentSystem';
 import * as z from 'zod';
 
+interface AgentOptions {
+  agentName?: string;        // Provide an agentName to load from registry
+  agentConfigPath?: string;  // Provide a direct path to a YAML config file
+}
+
 export class Agent {
   private agent: BaseAgent<any>;
 
-  constructor(agentName: string) {
-    const agentDef = loadAgentDefinition(agentName);
+  constructor(options: AgentOptions) {
+    let agentDef;
+    if (options.agentConfigPath) {
+      // Load directly from config path
+      agentDef = loadAgentFromFile(options.agentConfigPath);
+    } else if (options.agentName) {
+      // Load from agent name
+      agentDef = loadAgentDefinition(options.agentName);
+    } else {
+      throw new Error("You must provide either agentName or agentConfigPath");
+    }
 
     let modelClient: ModelClient;
     if (agentDef.client === 'openai') {
@@ -76,10 +90,6 @@ export class Agent {
 
   public addUserMessage(content: string) {
     this.agent.addUserMessage(content);
-  }
-
-  public addAgentMessage(content: string) {
-    this.agent.addAgentMessage(content);
   }
 }
 

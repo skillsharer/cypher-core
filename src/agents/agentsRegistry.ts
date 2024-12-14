@@ -19,29 +19,51 @@ interface PersonalityDefinition {
   [key: string]: string;
 }
 
-const AGENTS_DIR = path.resolve(__dirname);
+// Original fallback directory
+const PACKAGE_AGENTS_DIR = path.resolve(__dirname);
+// Detect local agents directory near user's cwd or importing file
+const localCandidates = [
+  path.resolve(process.cwd(), 'src', 'agents'),
+  path.resolve(process.cwd(), 'agents')
+];
+
+let detectedLocalAgentsDir: string | null = null;
+for (const candidate of localCandidates) {
+  if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+    detectedLocalAgentsDir = candidate;
+    break;
+  }
+}
+
+// Check environment variables for overrides
+const CUSTOM_AGENTS_DIR = process.env.AGENTS_DIR
+  ? path.resolve(process.env.AGENTS_DIR)
+  : (detectedLocalAgentsDir ? detectedLocalAgentsDir : PACKAGE_AGENTS_DIR);
+
+const CUSTOM_PERSONALITY_PATH = process.env.PERSONALITY_PATH 
+  ? path.resolve(process.env.PERSONALITY_PATH) 
+  : path.join(CUSTOM_AGENTS_DIR, 'personality.yaml');
 
 let personality: PersonalityDefinition | null = null;
 
 export function loadPersonality(): PersonalityDefinition {
   if (personality) return personality;
-  const personalityPath = path.join(AGENTS_DIR, 'personality.yaml');
-  if (!fs.existsSync(personalityPath)) {
-    throw new Error(`personality.yaml not found in ${AGENTS_DIR}`);
+  if (!fs.existsSync(CUSTOM_PERSONALITY_PATH)) {
+    // If no custom personality found, fallback to package's personality
+    const fallbackPersonality = path.join(PACKAGE_AGENTS_DIR, 'personality.yaml');
+    if (!fs.existsSync(fallbackPersonality)) {
+      throw new Error(`personality.yaml not found in ${CUSTOM_PERSONALITY_PATH} or fallback in ${fallbackPersonality}`);
+    }
+    personality = yaml.load(fs.readFileSync(fallbackPersonality, 'utf8')) as PersonalityDefinition;
+  } else {
+    personality = yaml.load(fs.readFileSync(CUSTOM_PERSONALITY_PATH, 'utf8')) as PersonalityDefinition;
   }
-  personality = yaml.load(fs.readFileSync(personalityPath, 'utf8')) as PersonalityDefinition;
   return personality;
 }
 
-export function loadAgentDefinition(agentName: string): AgentDefinition {
-  const agentPath = path.join(AGENTS_DIR, `${agentName}.yaml`);
-  if (!fs.existsSync(agentPath)) {
-    throw new Error(`Agent YAML definition not found: ${agentPath}`);
-  }
-  const raw = yaml.load(fs.readFileSync(agentPath, 'utf8')) as AgentDefinition;
-
-  // Resolve {{from_personality:VAR}} placeholders
+function resolvePlaceholdersInAgent(raw: AgentDefinition): AgentDefinition {
   const personalityDef = loadPersonality();
+
   function resolvePlaceholders(value: string): string {
     const fromPersonalityMatch = value.match(/{{from_personality:(.*?)}}/);
     if (fromPersonalityMatch) {
@@ -74,8 +96,7 @@ export function loadAgentDefinition(agentName: string): AgentDefinition {
     raw.personality = resolvePlaceholders(raw.personality);
   }
 
-  // Ensure personality and main_goal are added to dynamic_variables so that
-  // their placeholders ({{personality}}, {{main_goal}}) can be replaced at runtime
+  // Ensure personality and main_goal are added to dynamic_variables
   if (raw.personality) {
     raw.dynamic_variables = raw.dynamic_variables || {};
     raw.dynamic_variables['personality'] = raw.personality;
@@ -87,4 +108,35 @@ export function loadAgentDefinition(agentName: string): AgentDefinition {
   }
 
   return raw;
+}
+
+/**
+ * Load an agent definition directly from a given file path.
+ * If file not found or invalid, throws an error.
+ */
+export function loadAgentFromFile(configPath: string): AgentDefinition {
+  if (!fs.existsSync(configPath)) {
+    throw new Error(`Agent YAML definition not found: ${configPath}`);
+  }
+  const raw = yaml.load(fs.readFileSync(configPath, 'utf8')) as AgentDefinition;
+  return resolvePlaceholdersInAgent(raw);
+}
+
+/**
+ * Load an agent definition by agentName, or fallback.
+ * If agentName is provided, tries CUSTOM_AGENTS_DIR first, then PACKAGE_AGENTS_DIR.
+ * If agentName is 'TerminalAgent' or 'ChatAgent' and not found in custom dir, fallback to package's built-in.
+ */
+export function loadAgentDefinition(agentName: string): AgentDefinition {
+  // Attempt to load agent from CUSTOM_AGENTS_DIR first
+  let agentPath = path.join(CUSTOM_AGENTS_DIR, `${agentName}.yaml`);
+  if (!fs.existsSync(agentPath)) {
+    // If not found, fallback to package's built-in agents
+    agentPath = path.join(PACKAGE_AGENTS_DIR, `${agentName}.yaml`);
+    if (!fs.existsSync(agentPath)) {
+      throw new Error(`Agent YAML definition not found in custom or package directories: ${agentName}.yaml`);
+    }
+  }
+
+  return loadAgentFromFile(agentPath);
 }
