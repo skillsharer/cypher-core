@@ -77,6 +77,10 @@ export class Agent {
   public addUserMessage(content: string) {
     this.agent.addUserMessage(content);
   }
+
+  public addAgentMessage(content: string) {
+    this.agent.addAgentMessage(content);
+  }
 }
 
 function jsonSchemaToZod(schema: any): z.ZodTypeAny {
