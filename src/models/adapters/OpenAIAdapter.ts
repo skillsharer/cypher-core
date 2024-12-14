@@ -1,96 +1,91 @@
-import { ModelAdapter } from './ModelAdapter';
 import { Message, Tool } from '../../types/agentSystem';
-import { ZodTypeAny } from 'zod';
+import { ModelAdapter, ProcessedResponse, FunctionCall } from './ModelAdapter';
 
-export class OpenAIAdapter implements ModelAdapter {
-  supportsImages = true;
-
-  buildToolChoice(tools: Tool[]): any {
-    if (tools.length > 0) {
-      return {
-        type: 'function',
-        function: { name: tools[0].function.name },
-      };
-    }
-    return undefined;
-  }
-
-  formatTools(tools: Tool[]): any[] {
-    return tools.map((tool) => ({
-      name: tool.function.name,
-      description: tool.function.description,
-      parameters: tool.function.parameters,
-    }));
-  }
-
-  buildParams(
-    messageHistory: Message[],
-    formattedTools: any[],
-    toolChoice: any,
-    systemPrompt: string,
-    outputSchema?: ZodTypeAny
+export class OpenAIAdapter extends ModelAdapter {
+  public buildParams(
+    messages: Message[],
+    tools: Tool[],
+    toolChoice?: any,
+    systemPrompt?: string,
+    outputSchema?: any
   ): any {
-    const updatedMessageHistory = messageHistory.map((msg) => {
-      if (msg.role === 'system') {
-        return { ...msg, content: systemPrompt };
-      }
-
-      if (msg.image) {
-        return {
-          role: msg.role,
-          content: [
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${msg.image.mime};base64,${msg.image.data.toString('base64')}`
-              }
-            },
-            ...(msg.content ? [{ type: 'text', text: msg.content }] : [])
-          ]
-        };
-      }
-
-      return {
-        role: msg.role,
-        content: msg.content
-      };
+    const formattedMessages = messages.map(m => {
+      return { role: m.role, content: m.content || '' };
     });
 
     const params: any = {
-      messages: updatedMessageHistory
+      model: this.modelName,
+      messages: formattedMessages,
+      max_tokens: 1024,
+      temperature: 0
     };
 
-    if (outputSchema) {
-      // For OpenAI structured outputs using json_schema:
-      // We'll just provide a placeholder json_schema. In real usage, we'd convert zod schema.
-      // Here, assume outputSchema is a z.ZodTypeAny. For demonstration, we just do minimal.
-      const schemaJson = { 
-        type: "json_object" 
-        // In a real scenario, we'd convert outputSchema to actual JSON schema here.
-      };
-      params.response_format = schemaJson;
-    } else if (formattedTools.length > 0) {
-      params.functions = formattedTools;
-      if (toolChoice) {
-        params.function_call = toolChoice.function;
-      }
+    if (tools && tools.length > 0) {
+      params.tools = tools.map(t => ({
+        type: "function",
+        function: {
+          name: t.function.name,
+          description: t.function.description,
+          parameters: t.function.parameters
+        }
+      }));
+    }
+
+    if (toolChoice) {
+      params.tool_choice = toolChoice; 
+    }
+
+    if (outputSchema && params.tools) {
+      // Strict can be turned on for structured outputs
+      params.tools.forEach((tool: any) => {
+        tool.function.strict = true;
+      });
     }
 
     return params;
   }
 
-  processResponse(response: any): { aiMessage: any; functionCall?: any } {
-    const aiMessage = response.choices[0]?.message;
-    if (aiMessage?.function_call) {
-      const functionCall = aiMessage.function_call;
-      return {
-        aiMessage,
-        functionCall: {
-          functionName: functionCall.name,
-          functionArgs: JSON.parse(functionCall.arguments),
-        },
-      };
+  public formatTools(tools: Tool[]): any[] {
+    return tools.map(tool => ({
+      type: "function",
+      function: {
+        name: tool.function.name,
+        description: tool.function.description,
+        parameters: tool.function.parameters
+      }
+    }));
+  }
+
+  public buildToolChoice(tools: Tool[]): any {
+    return "auto";
+  }
+
+  public processResponse(response: any): ProcessedResponse {
+    const choice = response.choices && response.choices[0];
+    if (!choice) {
+      return { functionCalls: [] };
     }
-    return { aiMessage };
+
+    const message = choice.message || {};
+    const aiMessage = message.role === 'assistant' && message.content ? {
+      role: 'assistant',
+      content: message.content
+    } : undefined;
+
+    let functionCalls: FunctionCall[] = [];
+
+    if (message.tool_calls && Array.isArray(message.tool_calls)) {
+      functionCalls = message.tool_calls.map((tc: any) => ({
+        functionName: tc.function.name,
+        functionArgs: JSON.parse(tc.function.arguments)
+      }));
+    } else if (message.function_call) {
+      functionCalls.push({
+        functionName: message.function_call.name,
+        functionArgs: JSON.parse(message.function_call.arguments)
+      });
+    }
+
+    return { aiMessage, functionCalls };
   }
 }

@@ -3,7 +3,7 @@ import { ModelClient, ModelType } from '../../types/agentSystem';
 
 export class AnthropicClient implements ModelClient {
   private anthropic: Anthropic;
-  private modelName: string;
+  private _modelName: string;
   private defaultParams: any;
   modelType: ModelType = 'anthropic';
 
@@ -13,13 +13,16 @@ export class AnthropicClient implements ModelClient {
     params: any = {}
   ) {
     this.anthropic = new Anthropic({ apiKey });
-
-    this.modelName = modelName;
+    this._modelName = modelName;
     this.defaultParams = {
       temperature: 0.8,
       max_tokens: 1000,
       ...params,
     };
+  }
+
+  get modelName(): string {
+    return this._modelName;
   }
 
   async chatCompletion(params: any): Promise<any> {
@@ -30,7 +33,7 @@ export class AnthropicClient implements ModelClient {
       }));
 
       const requestParams = {
-        model: this.modelName,
+        model: this._modelName,
         ...this.defaultParams,
         ...params,
         messages: messages || params.messages,

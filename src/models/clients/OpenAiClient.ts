@@ -5,7 +5,7 @@ import { ModelClient, ModelType } from '../../types/agentSystem';
 
 export class OpenAIClient implements ModelClient {
   private openai: OpenAI;
-  private modelName: string;
+  private _modelName: string;
   private defaultParams: any;
   modelType: ModelType = 'openai';
 
@@ -15,8 +15,7 @@ export class OpenAIClient implements ModelClient {
     params: any = {}
   ) {
     this.openai = new OpenAI({ apiKey });
-
-    this.modelName = modelName;
+    this._modelName = modelName;
     this.defaultParams = {
       temperature: 0.8,
       max_tokens: 1000,
@@ -24,10 +23,14 @@ export class OpenAIClient implements ModelClient {
     };
   }
 
+  get modelName(): string {
+    return this._modelName;
+  }
+
   async chatCompletion(params: any): Promise<any> {
     try {
       const requestParams = {
-        model: this.modelName,
+        model: this._modelName,
         ...this.defaultParams,
         ...params,
       };

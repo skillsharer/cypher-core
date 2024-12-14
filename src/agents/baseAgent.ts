@@ -1,5 +1,5 @@
-import { Message, ModelClient, ModelType, Tool, AgentRunResult, ToolOutputFromSchema } from '../types/agentSystem';
-import { ModelAdapter } from '../models/adapters/ModelAdapter';
+import { Message, ModelClient, ModelType, Tool, AgentRunResult, ToolOutputFromSchema, FunctionCall } from '../types/agentSystem';
+import { ModelAdapter, ProcessedResponse } from '../models/adapters/ModelAdapter';
 import { OpenAIAdapter } from '../models/adapters/OpenAIAdapter';
 import { AnthropicAdapter } from '../models/adapters/AnthropicAdapter';
 import { FireworksAdapter } from '../models/adapters/FireworksAdapter';
@@ -16,7 +16,6 @@ type JsonSchema7Object = {
   };
 };
 
-// Minimal config interface to hold what we load from YAML
 interface BaseConfig {
   name: string;
   description?: string;
@@ -38,6 +37,7 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
   private agentId: string;
   private runData: any;
   private hasInjectedSchema: boolean = false;
+  private enableParallelFunctionCalls: boolean = true; 
 
   constructor(
     config: BaseConfig,
@@ -53,13 +53,13 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
 
     switch (this.modelType) {
       case 'openai':
-        this.modelAdapter = new OpenAIAdapter();
+        this.modelAdapter = new OpenAIAdapter(modelClient.modelName);
         break;
       case 'anthropic':
-        this.modelAdapter = new AnthropicAdapter();
+        this.modelAdapter = new AnthropicAdapter(modelClient.modelName);
         break;
       case 'fireworks':
-        this.modelAdapter = new FireworksAdapter();
+        this.modelAdapter = new FireworksAdapter(modelClient.modelName);
         break;
       default:
         throw new Error(`Unsupported model type: ${this.modelType}`);
@@ -71,7 +71,6 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
       Logger.debug('[BaseAgent] Output schema JSON:', this.schemaJson);
     }
 
-    // Initialize with empty system message - will be populated in first run
     this.messageHistory.push({
       role: 'system',
       content: '',
@@ -84,6 +83,12 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
     }
 
     this.runData = {};
+  }
+
+  public setTools(tools: Tool[]) {
+    Logger.debug('[BaseAgent] Registering tools:', tools);
+    this.tools = tools;
+    this.defineTools();
   }
 
   public setLogLevel(level: LogLevel) {
@@ -180,14 +185,24 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
     return prompt;
   }
 
-  protected async handleFunctionCall(args: any): Promise<any> {
-    Logger.debug('[BaseAgent] Handling function call with args:', args);
-    return args;
+  protected async handleFunctionCalls(functionCalls: FunctionCall[]): Promise<string> {
+    Logger.debug('[BaseAgent] Handling multiple parallel function calls:', functionCalls);
+    const results: string[] = [];
+
+    for (const fc of functionCalls) {
+      Logger.debug('[BaseAgent] Would execute tool:', fc.functionName, 'with args:', fc.functionArgs);
+      results.push(`Tool ${fc.functionName} called with args: ${JSON.stringify(fc.functionArgs)}`);
+    }
+
+    return results.join('\n');
   }
 
   protected defineTools(): void {
-    // Tools now come from YAML if needed. For now, no default tools.
-    // In a real scenario, we could load tools from config, but here we have none.
+    if (this.tools && this.tools.length > 0) {
+      Logger.debug('[BaseAgent] defineTools: We have tools defined:', this.tools.map(t => t.function.name));
+    } else {
+      Logger.debug('[BaseAgent] defineTools: No tools defined.');
+    }
   }
 
   protected buildToolChoice() {
@@ -199,6 +214,12 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
     const formatted = this.modelAdapter.formatTools(this.tools);
     Logger.debug('[BaseAgent] Formatted tools:', formatted);
     return formatted;
+  }
+
+  private stripCodeFences(jsonString: string): string {
+    // Remove triple backticks and ```json
+    return jsonString.replace(/```json\s*([\s\S]*?)```/g, '$1')
+                     .replace(/```([\s\S]*?)```/g, '$1');
   }
 
   public async run(
@@ -217,7 +238,6 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
       Logger.debug('[BaseAgent] Running agent with inputMessage:', inputMessage);
       this.runData.inputMessage = inputMessage;
 
-      this.defineTools();
       this.buildToolChoice();
 
       const hasTools = this.tools && this.tools.length > 0;
@@ -247,9 +267,10 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
           this.outputSchema
         );
       } else {
+        const toolsFormatted = hasTools ? this.formatTools() : [];
         params = this.modelAdapter.buildParams(
           this.messageHistory,
-          hasTools ? this.formatTools() : [],
+          toolsFormatted,
           hasTools ? this.toolChoice : undefined,
           updatedSystemPrompt
         );
@@ -268,22 +289,30 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
         this.runData.tokenUsage = response.usage;
       }
 
-      const { aiMessage, functionCall } = this.modelAdapter.processResponse(response);
-      Logger.debug('[BaseAgent] Processed model response:', { aiMessage, functionCall });
+      const processed: ProcessedResponse = this.modelAdapter.processResponse(response);
+      const { aiMessage, functionCalls } = processed;
+      Logger.debug('[BaseAgent] Processed model response:', { aiMessage, functionCalls });
       this.runData.aiMessage = aiMessage;
-      this.runData.functionCall = functionCall;
+      this.runData.functionCalls = functionCalls;
 
-      if (functionCall) {
-        formattedResponse += `## USED TOOL: ${functionCall.functionName}\n`;
-        for (const [key, value] of Object.entries(functionCall.functionArgs)) {
-          const formattedKey = key.toUpperCase().replace(/_/g, '_');
-          const formattedValue = typeof value === 'string' ? `"${value}"` : value;
-          formattedResponse += `${formattedKey}: ${formattedValue}\n`;
+      if (functionCalls && functionCalls.length > 0) {
+        if (this.enableParallelFunctionCalls) {
+          const parallelResult = await this.handleFunctionCalls(functionCalls);
+          formattedResponse = parallelResult;
+        } else {
+          const fc = functionCalls[0];
+          formattedResponse += `## USED TOOL: ${fc.functionName}\n`;
+          for (const [key, value] of Object.entries(fc.functionArgs)) {
+            const formattedKey = key.toUpperCase().replace(/_/g, '_');
+            const formattedValue = typeof value === 'string' ? `"${value}"` : value;
+            formattedResponse += `${formattedKey}: ${formattedValue}\n`;
+          }
         }
       } else if (aiMessage?.content && !hasTools && this.outputSchema) {
         try {
-          JSON.parse(aiMessage.content);
-          formattedResponse = aiMessage.content;
+          const cleanedContent = this.stripCodeFences(aiMessage.content);
+          JSON.parse(cleanedContent); // Just to check if valid JSON
+          formattedResponse = cleanedContent;
         } catch (err) {
           formattedResponse = aiMessage.content;
         }
@@ -297,25 +326,24 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
       }
 
       if (!hasTools && this.outputSchema) {
-        if (functionCall) {
+        if (functionCalls && functionCalls.length > 0) {
           try {
-            const parsedArgs = this.outputSchema.parse(functionCall.functionArgs);
-            Logger.debug('[BaseAgent] Parsed functionCall output successfully:', parsedArgs);
             return {
               success: true,
-              output: parsedArgs,
+              output: {} as (T extends z.ZodTypeAny ? ToolOutputFromSchema<T> : string)
             };
           } catch (err) {
-            Logger.error('[BaseAgent] Failed to parse structured output from functionCall:', err);
+            Logger.error('[BaseAgent] Failed to parse structured output from function calls:', err);
             return {
               success: false,
               output: {} as (T extends z.ZodTypeAny ? ToolOutputFromSchema<T> : string),
-              error: 'Failed to parse structured output from functionCall',
+              error: 'Failed to parse structured output from function calls',
             };
           }
         } else if (aiMessage?.content) {
           try {
-            const parsed = this.outputSchema.parse(JSON.parse(aiMessage.content));
+            const cleanedContent = this.stripCodeFences(aiMessage.content);
+            const parsed = this.outputSchema.parse(JSON.parse(cleanedContent));
             Logger.debug('[BaseAgent] Parsed AI message output successfully:', parsed);
             return {
               success: true,

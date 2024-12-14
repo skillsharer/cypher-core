@@ -1,24 +1,43 @@
-import { Tool, Message } from "../../types/agentSystem";
-import { ZodTypeAny } from 'zod';
+import { Message, Tool } from '../../types/agentSystem';
 
-export interface ModelAdapter {
-  supportsImages?: boolean;
+export interface ToolSchema {
+  name: string;
+  description: string;
+  parameters: any; // Renamed from input_schema to parameters
+}
 
-  buildToolChoice(tools: Tool[]): any;
+export interface FunctionCall {
+  functionName: string;
+  functionArgs: Record<string, any>;
+}
 
-  formatTools(tools: Tool[]): any[];
+export interface ProcessedResponse {
+  aiMessage?: {
+    role: string;
+    content: string;
+  };
+  functionCalls: FunctionCall[];
+}
 
-  /**
-   * Build parameters for the model's chat completion method.
-   * If outputSchema is provided, we must include a response_format block (depending on model).
-   */
-  buildParams(
-    messageHistory: Message[],
-    formattedTools: any[],
-    toolChoice: any,
-    systemPrompt: string,
-    outputSchema?: ZodTypeAny
+export abstract class ModelAdapter {
+  public supportsImages: boolean = false;
+  protected modelName: string;
+
+  constructor(modelName: string) {
+    this.modelName = modelName;
+  }
+
+  abstract buildParams(
+    messages: Message[],
+    tools: Tool[],
+    toolChoice?: any,
+    systemPrompt?: string,
+    outputSchema?: any
   ): any;
 
-  processResponse(response: any): { aiMessage: any; functionCall?: any };
+  abstract formatTools(tools: Tool[]): any[];
+
+  abstract buildToolChoice(tools: Tool[]): any;
+
+  abstract processResponse(response: any): ProcessedResponse;
 }

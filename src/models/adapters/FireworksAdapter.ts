@@ -1,79 +1,87 @@
-import { ModelAdapter } from './ModelAdapter';
 import { Message, Tool } from '../../types/agentSystem';
-import { ZodTypeAny } from 'zod';
+import { ModelAdapter, ProcessedResponse, FunctionCall } from './ModelAdapter';
 
-export class FireworksAdapter implements ModelAdapter {
-  supportsImages = false;
-
-  buildToolChoice(tools: Tool[]): any {
-    if (tools.length > 0) {
-      return {
-        type: 'function',
-        function: { name: tools[0].function.name },
-      };
-    }
-    return undefined;
-  }
-
-  formatTools(tools: Tool[]): any[] {
-    return tools.map((tool) => {
-      const { strict, ...functionWithoutStrict } = tool.function;
-      return {
-        ...tool,
-        function: functionWithoutStrict,
-      };
-    });
-  }
-
-  buildParams(
-    messageHistory: Message[],
-    formattedTools: any[],
-    toolChoice: any,
-    systemPrompt: string,
-    outputSchema?: ZodTypeAny
+export class FireworksAdapter extends ModelAdapter {
+  public buildParams(
+    messages: Message[],
+    tools: Tool[],
+    toolChoice?: any,
+    systemPrompt?: string,
+    outputSchema?: any
   ): any {
-    const filteredMessages = messageHistory.filter(msg => !msg.image);
-    
-    const updatedMessageHistory = filteredMessages.map(msg =>
-      msg.role === 'system'
-        ? { ...msg, content: systemPrompt }
-        : msg
-    );
+    const formattedMessages = messages.map(m => ({
+      role: m.role,
+      content: m.content || ''
+    }));
 
     const params: any = {
-      messages: updatedMessageHistory.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-        name: msg.name,
-      })),
+      model: this.modelName,
+      messages: formattedMessages
     };
 
+    if (tools && tools.length > 0) {
+      params.tools = tools.map(t => ({
+        type: "function",
+        function: {
+          name: t.function.name,
+          description: t.function.description,
+          parameters: t.function.parameters
+        }
+      }));
+    }
+
+    if (toolChoice) {
+      params.tool_choice = toolChoice;
+    }
+
     if (outputSchema) {
-      // For Fireworks structured outputs, we can also provide a response_format schema
-      // We'll assume simple json_object mode:
-      params.response_format = { type: "json_object" };
-    } else if (formattedTools.length > 0) {
-      params.tools = formattedTools;
-      if (toolChoice) {
-        params.tool_choice = toolChoice;
-      }
+      // Fireworks does not accept strict, so do nothing special
     }
 
     return params;
   }
 
-  processResponse(response: any): { aiMessage: any; functionCall?: any } {
-    const aiMessage = response.choices[0]?.message;
-    if (aiMessage?.tool_calls?.[0]) {
-      const toolCall = aiMessage.tool_calls[0];
-      return {
-        aiMessage,
-        functionCall: {
-          functionName: toolCall.function.name,
-          functionArgs: JSON.parse(toolCall.function.arguments),
-        },
-      };
+  public formatTools(tools: Tool[]): any[] {
+    return tools.map(tool => ({
+      type: "function",
+      function: {
+        name: tool.function.name,
+        description: tool.function.description,
+        parameters: tool.function.parameters
+      }
+    }));
+  }
+
+  public buildToolChoice(tools: Tool[]): any {
+    return "auto";
+  }
+
+  public processResponse(response: any): ProcessedResponse {
+    const choice = response.choices && response.choices[0];
+    if (!choice) {
+      return { functionCalls: [] };
     }
-    return { aiMessage };
+
+    const message = choice.message || {};
+    const aiMessage = message.role === 'assistant' && message.content ? {
+      role: 'assistant',
+      content: message.content
+    } : undefined;
+
+    let functionCalls: FunctionCall[] = [];
+
+    if (message.tool_calls && Array.isArray(message.tool_calls)) {
+      functionCalls = message.tool_calls.map((tc: any) => ({
+        functionName: tc.function.name,
+        functionArgs: JSON.parse(tc.function.arguments)
+      }));
+    } else if (message.function_call) {
+      functionCalls.push({
+        functionName: message.function_call.name,
+        functionArgs: JSON.parse(message.function_call.arguments)
+      });
+    }
+
+    return { aiMessage, functionCalls };
   }
 }

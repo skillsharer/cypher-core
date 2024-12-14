@@ -1,5 +1,3 @@
-// types/index.ts
-
 import { z } from 'zod';
 
 export interface Message {
@@ -35,7 +33,21 @@ export type ModelType = 'openai' | 'fireworks' | 'anthropic';
 
 export interface ModelClient {
   modelType: ModelType;
+  modelName: string;
   chatCompletion(params: any): Promise<any>;
+}
+
+export interface FunctionCall {
+  functionName: string;
+  functionArgs: Record<string, any>;
+}
+
+export interface ProcessedResponse {
+  aiMessage?: {
+    role: string;
+    content: string;
+  };
+  functionCalls: FunctionCall[];
 }
 
 // Base interface for all tool outputs

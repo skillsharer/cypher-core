@@ -5,7 +5,7 @@ import { ModelClient, ModelType } from '../../types/agentSystem';
 
 export class FireworkClient implements ModelClient {
   private client: OpenAI;
-  private modelName: string;
+  private _modelName: string;
   private defaultParams: any;
   modelType: ModelType = 'fireworks';
 
@@ -20,7 +20,7 @@ export class FireworkClient implements ModelClient {
       baseURL: 'https://api.fireworks.ai/inference/v1',
     });
 
-    this.modelName = modelName;
+    this._modelName = modelName;
     this.defaultParams = {
       temperature: 0.8,
       max_tokens: 1000,
@@ -28,11 +28,15 @@ export class FireworkClient implements ModelClient {
     };
   }
 
+  get modelName(): string {
+    return this._modelName;
+  }
+
   async chatCompletion(params: any): Promise<any> {
     try {
       // Merge default parameters with method-specific params
       const requestParams = {
-        model: this.modelName,
+        model: this._modelName,
         ...this.defaultParams,
         ...params,
       };
