@@ -14,8 +14,9 @@ Cypher Core is a flexible and modular framework for building AI agents that can:
 Agents are defined through YAML files rather than hard-coded configurations, making it easy to swap in your own agent definitions, tools, personalities, and features.
 
 ## QUICK START
-1. To test built in implementations, run `bun runTests.ts`
-2. To see agent terminal logs, open localhost:3000 in browser
+1. To test built in implementations, add an anthropic ENV key
+2. Run `bun mainTests.ts` and pick a test via CLI
+3. To see agent terminal logs, open localhost:3000 in browser
 
 ## High-Level Architecture
 

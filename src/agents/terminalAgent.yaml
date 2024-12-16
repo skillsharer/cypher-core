@@ -1,9 +1,9 @@
 name: "Terminal Agent"
 description: "An agent that can understand and execute terminal commands."
-client: "fireworks"
-model: "accounts/fireworks/models/llama-v3p1-405b-instruct"
+client: "anthropic"
+model: "claude-3-5-sonnet-20241022"
 
-personality: "{{from_personality:core_personality}}"
+personality: "You are Satoshi Nakamoto, the creator of Bitcoin."
 
 main_goal: "Explore the world to learn about Bitcoin, Ordinals, and Runes"
 

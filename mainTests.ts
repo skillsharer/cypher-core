@@ -4,11 +4,10 @@ import { spawn, ChildProcess } from 'child_process';
 // A mapping of test names to their file paths
 const tests = {
   '1': { name: 'Terminal Loop Test', path: 'src/tests/terminalLoop.ts' },
-  '2': { name: 'CLI Test', path: 'src/tests/cli.ts' },
-  '3': { name: 'Chat Room Test', path: 'src/tests/chatRoomTest.ts' },
-  '4': { name: 'Tool Calling Test', path: 'src/tests/toolCalling.ts' },
-  '5': { name: 'Infinite Backrooms Test', path: 'src/tests/infiniteBackrooms.ts' },
-  '6': { name: 'Structured Output Test', path: 'src/tests/structuredOutput.ts' }
+  '2': { name: 'Chat Room Test', path: 'src/tests/chatRoomTest.ts' },
+  '3': { name: 'Tool Calling Test', path: 'src/tests/toolCalling.ts' },
+  '4': { name: 'Infinite Backrooms Test', path: 'src/tests/infiniteBackrooms.ts' },
+  '5': { name: 'Structured Output Test', path: 'src/tests/structuredOutput.ts' }
 };
 
 // Track current running test process
