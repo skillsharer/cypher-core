@@ -49,12 +49,8 @@ let personality: PersonalityDefinition | null = null;
 export function loadPersonality(): PersonalityDefinition {
   if (personality) return personality;
   if (!fs.existsSync(CUSTOM_PERSONALITY_PATH)) {
-    // If no custom personality found, fallback to package's personality
-    const fallbackPersonality = path.join(PACKAGE_AGENTS_DIR, 'personality.yaml');
-    if (!fs.existsSync(fallbackPersonality)) {
-      throw new Error(`personality.yaml not found in ${CUSTOM_PERSONALITY_PATH} or fallback in ${fallbackPersonality}`);
-    }
-    personality = yaml.load(fs.readFileSync(fallbackPersonality, 'utf8')) as PersonalityDefinition;
+    // No custom personality found in AGENTS_DIR, do not load any personality.
+    personality = {}; // Initialize as empty object
   } else {
     personality = yaml.load(fs.readFileSync(CUSTOM_PERSONALITY_PATH, 'utf8')) as PersonalityDefinition;
   }
@@ -69,7 +65,9 @@ function resolvePlaceholdersInAgent(raw: AgentDefinition): AgentDefinition {
     if (fromPersonalityMatch) {
       const varName = fromPersonalityMatch[1].trim();
       if (!(varName in personalityDef)) {
-        throw new Error(`Personality variable "${varName}" not found in personality.yaml`);
+        // Personality variable not found, replace placeholder with empty string
+        console.warn(`Personality variable "${varName}" not found in personality.yaml`);
+        return value.replace(fromPersonalityMatch[0], '');
       }
       return value.replace(fromPersonalityMatch[0], personalityDef[varName]);
     }

@@ -18,6 +18,54 @@ Agents are defined through YAML files rather than hard-coded configurations, mak
 2. Run `bun mainTests.ts` and pick a test via CLI
 3. To see agent terminal logs, open localhost:3000 in browser
 
+## Agent Configuration & Loading
+
+### Loading Agents
+
+There are two main ways to load agent configurations:
+
+#### Option 1: Direct Config Path
+Specify the exact path to your agent's YAML config file:
+
+```typescript
+import { Agent } from 'cypher-core';
+
+const myAgent = new Agent({ 
+  agentConfigPath: './my_agents/mySpecialAgent.yaml' 
+});
+const result = await myAgent.run("Hello");
+```
+
+#### Option 2: Load by Agent Name
+Load an agent by name, which will search in your local agents directory and fall back to built-in agents:
+
+```typescript
+import { Agent } from 'cypher-core';
+
+const myAgent = new Agent({ agentName: "MyAgent" });
+const result = await myAgent.run("Hello");
+```
+
+**Built-in Fallbacks**: When using `agentName: "TerminalAgent"` or `agentName: "ChatAgent"`, Cypher Core will automatically use the built-in configurations if no custom configs are found.
+
+### Configuration and Environment
+
+You can customize the agent loading behavior using environment variables:
+
+```bash
+# Set custom directories for agents and personality
+export AGENTS_DIR=./my_custom_agents
+export PERSONALITY_PATH=./my_custom_agents/personality.yaml
+```
+
+### The `personality.yaml` File
+
+A global file defining the core personality and any other variables you want available to all agents.
+
+```yaml
+core_personality: "This is the shared core personality that all agents can reference."
+```
+
 ## High-Level Architecture
 
 1. **Personality & Configuration via YAML**  
