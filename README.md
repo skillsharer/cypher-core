@@ -7,233 +7,218 @@
 Cypher Core is a flexible and modular framework for building AI agents that can:
 
 - Chat naturally
-- Utilize tools (function calling)
+- Utilize external tools (function calling)
 - Produce structured JSON outputs validated by schemas
-- Operate continuously and autonomously (via ```TerminalCore```), running commands and interacting with a "world" environment.
+- Operate continuously and autonomously (via `TerminalCore`), running commands and interacting with a "world" environment.
 
-This framework emphasizes modularity and ease of customization. Agents are defined through YAML files rather than hard-coded configurations, making it simple to swap in your own agent definitions and personalities without touching the underlying code.
+Agents are defined through YAML files rather than hard-coded configurations, making it easy to swap in your own agent definitions, tools, personalities, and features.
+
+## QUICK START
+1. To test built in implementations, run `bun runTests.ts`
+2. To see agent terminal logs, open localhost:3000 in browser
 
 ## High-Level Architecture
 
-1. **Personality & Configuration via YAML**:  
-  Each agent is defined entirely in a single ```.yaml``` file, which includes:
+1. **Personality & Configuration via YAML**  
+   Each agent is defined in a single `.yaml` file, including:
    - Agent name & description
    - Model/client selection
-   - System prompt with embedded references to global personality variables
+   - System prompt referencing global personality variables
    - Main goals and dynamic variables
-   - Tools (function-calling capabilities, if any)
+   - Tools (function-calling capabilities)
    - Optional structured output schemas
 
-   Additionally, a global ```personality.yaml``` file holds shared personality traits or variables. Agent YAML files can reference these global variables dynamically using placeholders like ```{{from_personality:core_personality}}```.
+   Additionally, `personality.yaml` holds shared personality traits. Reference these variables using `{{from_personality:core_personality}}` or similar placeholders.
 
-2. **BaseAgent**:  
+2. **BaseAgent**  
    A foundational class that:
    - Manages chat history
    - Interacts with the model (OpenAI, Anthropic, Fireworks)
-   - Optionally uses tools or returns structured outputs (via JSON schemas)
+   - Optionally uses tools or returns structured outputs via JSON schemas
 
-3. **TerminalCore (Autonomous Runtime)**:  
+   Configuration is entirely YAML-based—no hard-coded logic required.
+
+3. **TerminalCore (Autonomous Runtime)**  
    A loop-based runtime that continuously runs an agent, allowing it to:
-   - Issue terminal commands (tools)
-   - Interact with features that introduce new commands
+   - Issue terminal commands (via tools/features)
    - Operate indefinitely, enabling fully autonomous behavior
+   - Integrate features that provide new commands or actions
 
-4. **GUI & Logger**:  
-   A built-in GUI allows you to monitor your agent’s behavior, view logs, system prompts, and last run data in real-time.
+4. **GUI & Logger**  
+   A built-in GUI lets you monitor agent behavior, logs, system prompts, and last run data in real-time.
 
-## Setting Up Your Agent
+## Function Calling (Tools)
 
-### 1. Loading Agents
+**When to Use**: If your model needs to fetch external data or perform actions, use tools.
 
-There are two main ways to load agent configurations:
-
-#### Option 1: Direct Config Path
-Specify the exact path to your agent's YAML config file:
-
-```typescript
-import { Agent } from 'cypher-core';
-
-const myAgent = new Agent({ 
-  agentConfigPath: './my_agents/mySpecialAgent.yaml' 
-});
-const result = await myAgent.run("Hello");
-```
-
-#### Option 2: Load by Agent Name
-Load an agent by name, which will search in your local agents directory and fall back to built-in agents:
-
-```typescript
-import { Agent } from 'cypher-core';
-
-const myAgent = new Agent({ agentName: "MyAgent" });
-const result = await myAgent.run("Hello");
-```
-
-**Built-in Fallbacks**: When using `agentName: "TerminalAgent"` or `agentName: "ChatAgent"`, Cypher Core will automatically use the built-in configurations if no custom configs are found.
-
-### 2. Configuration and Environment
-
-You can customize the agent loading behavior using environment variables:
-
-```bash
-# Set custom directories for agents and personality
-export AGENTS_DIR=./my_custom_agents
-export PERSONALITY_PATH=./my_custom_agents/personality.yaml
-```
-
-### 3. The `personality.yaml` File
-
-A global file defining the core personality and any other variables you want available to all agents.
-
+**How It Works**:  
+- Define a tool in your agent’s YAML:
 ```yaml
-core_personality: "This is the shared core personality that all agents can reference."
+  tools:
+  - type: "function"
+    function:
+      name: "get_weather"
+      description: "Get the current weather in a given location"
+      parameters:
+        type: object
+        properties:
+          location:
+            type: string
+            description: "The city and state, e.g. San Francisco, CA"
+        required: ["location"]
 ```
 
-### 4. Defining an Agent in YAML
+- The agent may call this function when it decides it needs the weather data.
+- The model’s response includes a function call (e.g., `get_weather` with arguments).
+- **Your application** executes the actual function (like calling a weather API).
+- After execution, you provide the result back to the agent as a ```role: "tool"``` message.
+- The agent then uses the returned data to produce its final answer.
 
-Example `myAgent.yaml`:
-
-```yaml
-name: "MyAgent"
-description: "An agent specialized in friendly conversations."
-client: "openai"
-model: "gpt-4o"
-
-personality: "{{from_personality:core_personality}}"
-main_goal: "Help the user with general information"
-
-system_prompt: |
-  # PERSONALITY
-  {{personality}}
-
-  # MAIN GOAL
-  {{main_goal}}
-
-  {{additional_info}}
-
-dynamic_variables:
-  additional_info: "No additional info at this time."
-
-output_schema: null
-tools: []
-```
-
-In this example:
-
-- ```{{from_personality:core_personality}}``` pulls the ```core_personality``` value from ```personality.yaml```.
-- You can easily adjust ```tools``` or ```output_schema``` if needed.
-
-### 5. Running the Agent
-
+**Example**:
 ```typescript
-import { Agent } from 'cypher-core'; // hypothetical package name
+const result = await agent.run("What's the weather in Berlin?");
+if (result.success && result.functionCalls) {
+  for (const call of result.functionCalls) {
+    if (call.functionName === 'get_weather') {
+      const weatherData = await myWeatherAPI(call.functionArgs.location);
+      agent.addMessage({
+        role: 'tool',
+        content: JSON.stringify({ weather: weatherData }),
+        tool_call_id: call.id
+      });
+    }
+  }
+  const final = await agent.run();
+  console.log("Final agent answer:", final.output);
+}```
 
-const myAgent = new Agent({ agentName: "myAgent" }); // Matches the filename myAgent.yaml
-const result = await myAgent.run("Hello there!");
-if (result.success) {
-  console.log("Agent response:", result.output);
-} else {
-  console.error("Agent error:", result.error);
-}
-```
+## Structured Outputs
 
-## TerminalCore Integration for Autonomy
+**When to Use**: If you need the model to return data in a strict JSON format with no external calls.
 
-To run agents continuously:
-
-1. Create ```terminalAgent.yaml```:
-
+**How It Works**:
+- Define an `output_schema` in the YAML:
 ```yaml
-name: "terminalAgent"
-description: "Agent with terminal capabilities"
-client: "fireworks"
-model: "accounts/fireworks/models/llama-v3p1-405b-instruct"
-
-personality: "{{from_personality:core_personality}}"
-main_goal: "Continuously perform tasks and gather information."
-
-system_prompt: |
-  You are an intelligent AI agent that is hooked up to a terminal in which you can freely run commands.
-  This terminal acts as your world interface, and is equipped with tools to interact with the real world.
-
-  # PERSONALITY
-  {{personality}}
-
-  # MAIN GOAL
-  {{main_goal}}
-
-  {{additional_dynamic_variables}}
-
-  # TERMINAL COMMANDS
-  {{terminal_commands}}
-
-dynamic_variables:
-  terminal_commands: "{{from_terminal_commands}}"
-  additional_dynamic_variables: ""
-
 output_schema:
   type: object
   properties:
-    internal_thought:
+    answer:
       type: string
-      description: "Your internal reasoning process about the next commands to run."
-    plan:
-      type: string
-      description: "A short plan of what to do next."
-    terminal_commands:
-      type: string
-      description: "The full terminal command to execute, including all arguments and options."
-  required:
-    - internal_thought
-    - plan
-    - terminal_commands
-
-tools: []
+    confidence:
+      type: number
+      required: ["answer", "confidence"]
 ```
 
-2. Run with ```TerminalCore```:
+- The agent must return JSON that matches this schema. No external function calls are made.
+- Simply run the agent and get a well-structured JSON response:
 
 ```typescript
-import { TerminalCore } from 'cypher-core';
-import InternetFeature from 'cypher-core/features/internet';
+const result = await agent.run("What is the capital of France?");
+// result.output might be: { answer: "Paris", confidence: 0.99 }
+```
+
+## Choosing Between Tools and Structured Outputs
+
+- **Tools**: For scenarios where the agent must actively call external functions (APIs, databases, etc.). The model triggers a function call, you handle it, and feed back results.
+- **Structured Outputs**: For scenarios where you just want a specific JSON format and do not need external actions.
+
+You can combine both. For example, the agent might first call a tool to fetch data and later produce a final answer in a structured JSON format.
+
+## Features (Adding New Commands to TerminalCore)
+
+Features are modules that add new commands (terminal actions) to the agent’s environment. This allows the agent to perform additional actions beyond tool calls. Features are especially useful when running the agent through `TerminalCore`, enabling a richer set of actions the agent can autonomously perform.
+
+**How to Add a Feature**:  
+- Create a new `.ts` file in `src/features/` that exports a `TerminalFeature`.  
+- Implement a `loadFeatureCommands()` method that returns an array of `Command` objects.
+- Each `Command` defines a name, description, parameters, and a handler function.
+- Add the feature to the `features` array when initializing `TerminalCore`.
+
+**Example**:
+```typescript
+// src/features/myNewFeature.ts
+import { TerminalFeature } from './featureTypes';
+import { Command } from '../terminal/types/commands';
+
+const myCustomCommand: Command = {
+  name: 'say-hello',
+  description: 'Print a greeting message.',
+  parameters: [],
+  handler: async () => {
+    return { output: 'Hello from my new feature!' };
+  },
+};
+
+const MyNewFeature: TerminalFeature = {
+  async loadFeatureCommands(): Promise<Command[]> {
+    return [myCustomCommand];
+  }
+};
+
+export default MyNewFeature;
+```
+
+Then, register this feature in `TerminalCore`:
+```typescript
+import MyNewFeature from './src/features/myNewFeature';
+import { TerminalCore } from './src/terminal/terminalCore';
 
 const core = new TerminalCore({
-  maxActions: 10,
-  actionCooldownMs: 10000,
-  features: [InternetFeature],
-});
-
-// This lets us extract individual messages per iteration
-core.on('loop:iteration', (messages) => {
-  console.log('Iteration messages:', messages);
-});
-
-// This lets us extract the full history of the loop after it finishes (typically for memory purposes)
-core.on('loop:maxActions', (fullHistory) => {
-  console.log('Reached max actions for this cycle');
+  features: [MyNewFeature],
 });
 
 await core.init();
-
-// This lets us set dynamic variables before starting the loop, can add any variables you want to be available to the agent
-core.setDynamicVariables({
-  additional_dynamic_variables: "## CURRENT SUMMARIES OF YOUR RECENT ACTIVITY\n\nSomething happened"
-});
-
 await core.runLoop();
 ```
 
-## Using the GUI Logger
+Now the agent can execute the `say-hello` command autonomously if needed.
 
-This spins up a local server that you can visit at ```http://localhost:3000``` to view the logs and messages of your agent.
-ANY agent defined in a run will automatically show up in the GUI.
+## Workflow
+
+1. **Define global personality & variables** in `config/personality.yaml`.
+2. **Create or modify an agent YAML** in `src/agents/` defining goals, tools, or output schemas.
+3. **Add features** in `src/features/` to introduce new commands available to the agent.
+4. **Run the agent** via `TerminalCore` or directly using the `Agent` class.
+5. **If using tools**, handle function calls in your code, provide results back, and re-run the agent.
+6. **If using structured outputs**, just parse the returned JSON.
+7. **Use features** to expand the agent’s capabilities with terminal commands.
+
+## GUI and Logging
+
+- Start the logger server to view GUI: `loggerServer.ts`
+- Monitor agent behavior, prompts, tool calls, feature commands, and responses in real-time.
+- Adjust prompts, tools, schemas, and features as needed.
+
+## Extensibility
+
+- Add new agents by creating a new YAML—no code changes needed.
+- Add tools by updating the YAML.
+- Add features to introduce new commands.
+- Swap models by changing the `client` and `model` fields in YAML.
+- Use structured outputs or function calling depending on your use case.
+
+## Example: Running a Structured Agent
 
 ```typescript
-import { createLoggerServer, Logger } from 'cypher-core';
+import { Agent } from 'cypher-core';
 
-Logger.enable();
-Logger.setLevel('debug');
-
-const loggerServer = createLoggerServer();
-await loggerServer.start(); // Visit http://localhost:3000
+const agent = new Agent({ agentName: "structuredAgent" });
+const result = await agent.run("What's the capital of France?");
+if (result.success) {
+  console.log("Agent structured response:", result.output);
+}
 ```
+
+## Example: Running a Tool-Enabled Agent
+
+```typescript
+import { Agent } from 'cypher-core';
+
+const agent = new Agent({ agentName: "toolAgent" });
+const result = await agent.run("What's the weather in San Francisco?");
+if (result.success && result.functionCalls) {
+  // For each function call, call the external API or logic, then feed results back.
+}
+```
+
+By following this approach, you can build complex, tool-integrated, feature-rich, or strictly structured agents in a modular, configuration-driven manner.

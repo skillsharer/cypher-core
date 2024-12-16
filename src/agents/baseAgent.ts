@@ -191,6 +191,8 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
 
     for (const fc of functionCalls) {
       Logger.debug('[BaseAgent] Would execute tool:', fc.functionName, 'with args:', fc.functionArgs);
+      // Instead of returning just a string, we store a placeholder result message.
+      // The actual execution should be done externally after run() completes.
       results.push(`Tool ${fc.functionName} called with args: ${JSON.stringify(fc.functionArgs)}`);
     }
 
@@ -217,7 +219,6 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
   }
 
   private stripCodeFences(jsonString: string): string {
-    // Remove triple backticks and ```json
     return jsonString.replace(/```json\s*([\s\S]*?)```/g, '$1')
                      .replace(/```([\s\S]*?)```/g, '$1');
   }
@@ -226,13 +227,14 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
     inputMessage?: string,
     dynamicVariables?: { [key: string]: string },
     logLevel?: LogLevel
-  ): Promise<AgentRunResult<T>> {
+  ): Promise<AgentRunResult<T> & { functionCalls?: FunctionCall[] }> {
     this.runData = {
       inputMessage,
       dynamicVariables,
     };
 
     let formattedResponse = '';
+    let functionCalls: FunctionCall[] | undefined;
 
     try {
       Logger.debug('[BaseAgent] Running agent with inputMessage:', inputMessage);
@@ -290,17 +292,18 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
       }
 
       const processed: ProcessedResponse = this.modelAdapter.processResponse(response);
-      const { aiMessage, functionCalls } = processed;
-      Logger.debug('[BaseAgent] Processed model response:', { aiMessage, functionCalls });
+      const { aiMessage, functionCalls: calls } = processed;
+      Logger.debug('[BaseAgent] Processed model response:', { aiMessage, functionCalls: calls });
       this.runData.aiMessage = aiMessage;
-      this.runData.functionCalls = functionCalls;
+      this.runData.functionCalls = calls;
+      functionCalls = calls && calls.length > 0 ? calls : undefined;
 
-      if (functionCalls && functionCalls.length > 0) {
+      if (calls && calls.length > 0) {
         if (this.enableParallelFunctionCalls) {
-          const parallelResult = await this.handleFunctionCalls(functionCalls);
+          const parallelResult = await this.handleFunctionCalls(calls);
           formattedResponse = parallelResult;
         } else {
-          const fc = functionCalls[0];
+          const fc = calls[0];
           formattedResponse += `## USED TOOL: ${fc.functionName}\n`;
           for (const [key, value] of Object.entries(fc.functionArgs)) {
             const formattedKey = key.toUpperCase().replace(/_/g, '_');
@@ -311,7 +314,7 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
       } else if (aiMessage?.content && !hasTools && this.outputSchema) {
         try {
           const cleanedContent = this.stripCodeFences(aiMessage.content);
-          JSON.parse(cleanedContent); // Just to check if valid JSON
+          JSON.parse(cleanedContent);
           formattedResponse = cleanedContent;
         } catch (err) {
           formattedResponse = aiMessage.content;
@@ -326,11 +329,12 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
       }
 
       if (!hasTools && this.outputSchema) {
-        if (functionCalls && functionCalls.length > 0) {
+        if (calls && calls.length > 0) {
           try {
             return {
               success: true,
-              output: {} as (T extends z.ZodTypeAny ? ToolOutputFromSchema<T> : string)
+              output: {} as (T extends z.ZodTypeAny ? ToolOutputFromSchema<T> : string),
+              functionCalls
             };
           } catch (err) {
             Logger.error('[BaseAgent] Failed to parse structured output from function calls:', err);
@@ -338,6 +342,7 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
               success: false,
               output: {} as (T extends z.ZodTypeAny ? ToolOutputFromSchema<T> : string),
               error: 'Failed to parse structured output from function calls',
+              functionCalls
             };
           }
         } else if (aiMessage?.content) {
@@ -348,6 +353,7 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
             return {
               success: true,
               output: parsed,
+              functionCalls
             };
           } catch (err) {
             Logger.error('[BaseAgent] Failed to parse structured output:', err);
@@ -355,6 +361,7 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
               success: false,
               output: {} as (T extends z.ZodTypeAny ? ToolOutputFromSchema<T> : string),
               error: 'Failed to parse structured output',
+              functionCalls
             };
           }
         }
@@ -363,6 +370,7 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
       return {
         success: true,
         output: formattedResponse as any,
+        functionCalls
       };
     } catch (error) {
       Logger.error('[BaseAgent] Run encountered error:', error);
@@ -370,7 +378,7 @@ export class BaseAgent<T extends z.ZodTypeAny | null = null> {
       return {
         success: false,
         output: (this.outputSchema ? {} : '') as (T extends z.ZodTypeAny ? ToolOutputFromSchema<T> : string),
-        error: (error as Error).message,
+        error: (error as Error).message
       };
     } finally {
       if (this.runData.response?.usage) {

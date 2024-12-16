@@ -1,8 +1,10 @@
 import { Agent } from '../agents/Agent';
 import { Logger } from '../util/logger';
 import { createLoggerServer } from '../gui/loggerServer';
+import { FunctionCall } from '../types/agentSystem';
 
-// Enable logging for clarity in test output
+// This is an example of how to simulate tool calling in an agent. API calls are simulated by adding messages to the agent.
+
 Logger.enable();
 Logger.setLevel('debug');
 
@@ -10,22 +12,43 @@ const loggerServer = createLoggerServer();
 loggerServer.start();
 
 (async () => {
-  // In this test, we assume the model and keys are properly set up in your environment.
-  // We'll load the ChatAgentParallel agent we just created.
-
   const agent = new Agent({ agentName: "toolAgent" });
 
-  // We'll simulate a user asking about the weather in San Francisco and the time in Tokyo simultaneously.
   const userMessage = "Hey, can you tell me the weather in San Francisco and also the current time in Tokyo?";
   const result = await agent.run(userMessage);
 
   if (result.success) {
-    console.log("Agent response:", result.output);
+    console.log("Initial Agent response:", result.output);
+
+    const resultWithFunctionCalls = result as { success: boolean; output: any; error?: string; functionCalls?: FunctionCall[] };
+
+    // Check if we have function calls that need to be executed.
+    if (resultWithFunctionCalls.functionCalls && resultWithFunctionCalls.functionCalls.length > 0) {
+      // Simulate executing the tools externally:
+      for (const call of resultWithFunctionCalls.functionCalls) {
+        if (call.functionName === "get_weather") {
+          // Simulate calling weather API
+          const apiResult = { weather: "Sunny, 20°C" };
+          // Feed the result back to the agent as a tool response
+          agent.addUserMessage(JSON.stringify(apiResult));
+        } else if (call.functionName === "get_time") {
+          // Simulate calling time API
+          const apiResult = { time: "2024-12-15T09:23:00Z" };
+          agent.addUserMessage(JSON.stringify(apiResult));
+        }
+      }
+
+      // Now re-run the agent so it can use these tool results to produce a final answer:
+      const finalResult = await agent.run();
+      if (finalResult.success) {
+        console.log("Final Agent response with tool results:", finalResult.output);
+      } else {
+        console.error("Agent error on final run:", finalResult.error);
+      }
+    } else {
+      console.log("No function calls to execute.");
+    }
   } else {
     console.error("Agent error:", result.error);
   }
-
-  // In a real scenario, you'd implement the tool execution logic in the agent code or model adapter.
-  // For this test, we just show how to run the agent. The agent would produce tool calls that you'd intercept,
-  // execute, and then feed back the results.
 })();

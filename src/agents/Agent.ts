@@ -3,7 +3,7 @@ import { loadAgentDefinition, loadAgentFromFile } from './agentsRegistry';
 import { OpenAIClient } from '../models/clients/OpenAiClient';
 import { AnthropicClient } from '../models/clients/AnthropicClient';
 import { FireworkClient } from '../models/clients/FireworkClient';
-import { ModelClient, Message, Tool } from '../types/agentSystem';
+import { ModelClient, Message, Tool, FunctionCall } from '../types/agentSystem';
 import * as z from 'zod';
 import { Logger } from '../util/logger';
 
@@ -141,7 +141,7 @@ export class Agent {
     }
   }
 
-  public async run(userMessage?: string, dynamicVars?: { [key: string]: string }): Promise<{success: boolean; output: any; error?: string}> {
+  public async run(userMessage?: string, dynamicVars?: { [key: string]: string }): Promise<{success: boolean; output: any; error?: string; functionCalls?: FunctionCall[]}> {
     return this.agent.run(userMessage, dynamicVars);
   }
 
