@@ -5,6 +5,7 @@ import { Logger } from '../utils/logger';
 import { createLoggerServer } from '../gui/loggerServer';
 import InternetFeature from '../features/internet';
 import { TerminalCore } from '../terminal/terminalCore';
+import TwitterFeature from '../features/twitter';
 
 // Main async function to handle all async operations
 async function main() {
@@ -18,7 +19,7 @@ async function main() {
   const core = new TerminalCore({
     maxActions: 2,
     actionCooldownMs: 10000,
-    features: [InternetFeature],
+    features: [InternetFeature, TwitterFeature],
   });
 
   // Add event listeners for loop events

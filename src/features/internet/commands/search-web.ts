@@ -1,5 +1,5 @@
-import { Command } from '../../terminal/types/commands';
-import { queryPerplexity } from './internetTool';
+import { Command } from '../../../terminal/types/commands';
+import { queryPerplexity } from '../internetTool';
 
 export const searchWeb: Command = {
   name: 'search-web',
