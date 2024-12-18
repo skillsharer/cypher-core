@@ -5,8 +5,8 @@ import { AnthropicAdapter } from '../models/adapters/AnthropicAdapter';
 import { FireworksAdapter } from '../models/adapters/FireworksAdapter';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { Logger } from '../util/logger';
-import { agentEventBus } from '../util/agentEventBus';
+import { Logger } from '../utils/logger';
+import { agentEventBus } from '../utils/agentEventBus';
 
 export type LogLevel = 'none' | 'error' | 'info' | 'debug';
 

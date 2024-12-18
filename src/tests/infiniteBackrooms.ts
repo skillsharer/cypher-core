@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import { createLoggerServer } from '../gui/loggerServer';
-import { Logger } from '../util/logger';
+import { Logger } from '../utils/logger';
 import fs from 'fs';
 import path from 'path';
 import { Agent } from '../agents/Agent';

@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { Logger } from '../util/logger';
+import { Logger } from '../utils/logger';
 import { createLoggerServer } from '../gui/loggerServer';
 import InternetFeature from '../features/internet';
 import { TerminalCore } from '../terminal/terminalCore';

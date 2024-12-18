@@ -1,6 +1,6 @@
 import { Message, Tool } from '../../types/agentSystem';
 import { ModelAdapter, ProcessedResponse, FunctionCall } from './ModelAdapter';
-import { Logger } from '../../util/logger';
+import { Logger } from '../../utils/logger';
 
 export class AnthropicAdapter extends ModelAdapter {
   public buildParams(

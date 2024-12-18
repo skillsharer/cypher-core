@@ -1,6 +1,6 @@
 import { Agent } from '../agents/Agent';
-import { Logger } from '../util/logger';
-import { getCurrentTimestamp } from '../util/formatTimestamps';
+import { Logger } from '../utils/logger';
+import { getCurrentTimestamp } from '../utils/formatTimestamps';
 import { executeCommand } from './executeCommand';
 import { EventEmitter } from 'events';
 import { registerCommands, generateHelpText } from './commandRegistry';

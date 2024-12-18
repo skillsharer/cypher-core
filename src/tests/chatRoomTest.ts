@@ -1,6 +1,6 @@
 import { Agent } from '../agents/Agent';
 import { createLoggerServer } from '../gui/loggerServer';
-import { Logger } from '../util/logger';
+import { Logger } from '../utils/logger';
 
 // Enable logging before starting the test
 Logger.enable();

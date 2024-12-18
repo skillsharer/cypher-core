@@ -1,5 +1,5 @@
 import { Agent } from '../agents/Agent';
-import { Logger } from '../util/logger';
+import { Logger } from '../utils/logger';
 
 // This test will run the structuredAgent and ask a question
 // The agent must return structured JSON conforming to the schema.

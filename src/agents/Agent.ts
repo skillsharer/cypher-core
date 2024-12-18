@@ -5,7 +5,7 @@ import { AnthropicClient } from '../models/clients/AnthropicClient';
 import { FireworkClient } from '../models/clients/FireworkClient';
 import { ModelClient, Message, Tool, FunctionCall } from '../types/agentSystem';
 import * as z from 'zod';
-import { Logger } from '../util/logger';
+import { Logger } from '../utils/logger';
 
 interface AgentOptions {
   agentName?: string;        // Provide an agentName to load from registry

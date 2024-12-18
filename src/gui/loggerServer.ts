@@ -1,8 +1,8 @@
 import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Logger } from '../util/logger';
-import { agentEventBus } from '../util/agentEventBus';
+import { Logger } from '../utils/logger';
+import { agentEventBus } from '../utils/agentEventBus';
 import * as WebSocket from 'ws';
 
 export class LoggerServer {

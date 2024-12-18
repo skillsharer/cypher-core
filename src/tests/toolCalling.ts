@@ -1,5 +1,5 @@
 import { Agent } from '../agents/Agent';
-import { Logger } from '../util/logger';
+import { Logger } from '../utils/logger';
 import { createLoggerServer } from '../gui/loggerServer';
 import { FunctionCall } from '../types/agentSystem';
 

@@ -2,7 +2,7 @@
 
 import readline from 'readline';
 import { executeCommand } from '../terminal/executeCommand';
-import { Logger } from '../util/logger';
+import { Logger } from '../utils/logger';
 import { registerCommands } from '../terminal/commandRegistry';
 import { help } from '../terminal/commands/help';
 
