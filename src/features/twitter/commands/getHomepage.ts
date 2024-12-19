@@ -27,6 +27,7 @@ export const twitterGetHomepage: Command = {
       }
       return {
         output: `📱 Found ${tweets.length} unhandled tweet${tweets.length === 1 ? '' : 's'} in timeline:\n${tweets.join('\n')}`
+          + "\nTo get the full thread of a tweet to reply, use twitter get-thread <tweetid>"
       };
     } catch (error) {
       return {

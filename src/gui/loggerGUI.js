@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleRawInputButton = document.getElementById('toggleRawInputButton');
     const rawInputContainer = document.getElementById('rawInputContainer');
     const refreshButton = document.getElementById('refreshButton');
+    const sendMessageButton = document.getElementById('sendMessageButton');
+    const userMessageInput = document.getElementById('userMessageInput');
 
     let currentAgentId = null;
     let logsVisible = localStorage.getItem('logsVisible') === 'true';
@@ -96,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
           return [];
         }
         const messages = await response.json();
-        console.log('Fetched chat history:', messages);
         return messages;
       } catch (error) {
         console.error('Error fetching chat history:', error);
@@ -206,13 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
         messageGroup.appendChild(messageDiv);
 
         if (msg.role === 'assistant' && msg.runData) {
-          // Add token usage if available
           if (msg.runData.tokenUsage) {
             const tokenUsage = msg.runData.tokenUsage;
             const usageDiv = document.createElement('div');
             usageDiv.className = 'token-usage';
-            
-            // Support both OpenAI and Anthropic token usage formats
             const promptTokens = tokenUsage.prompt_tokens || tokenUsage.input_tokens;
             const completionTokens = tokenUsage.completion_tokens || tokenUsage.output_tokens;
             const totalTokens = tokenUsage.total_tokens || (promptTokens + completionTokens);
@@ -223,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.appendChild(usageDiv);
           }
 
-          // Add raw input button
           const rawInputButton = document.createElement('button');
           rawInputButton.className = 'raw-input-button';
           rawInputButton.textContent = 'Show Raw Input';
@@ -258,25 +255,30 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    let lastRunData = {};
+
     async function updateUI() {
       if (!currentAgentId) return;
 
-      const [prompt, messages, aiResponse, logs] = await Promise.all([
+      const [prompt, messages, aiResponse, logs, runData] = await Promise.all([
         fetchSystemPrompt(currentAgentId),
         fetchChatHistory(currentAgentId),
         fetchAIResponse(currentAgentId),
         fetchLogs(currentAgentId),
+        fetchLastRunData(currentAgentId)
       ]);
-
-      console.log('Fetched messages:', messages);
 
       systemPromptDisplay.textContent = prompt || 'No system prompt available.';
       renderChatHistory(messages);
       renderMainChat(messages);
-      aiResponseContainer.textContent = aiResponse || 'No AI response available.';
+      if (aiResponseContainer) {
+        aiResponseContainer.textContent = aiResponse || 'No AI response available.';
+      }
       renderLogs(logs);
-
-      rawInputContainer.innerHTML = `<pre>${JSON.stringify(lastRunData, null, 2)}</pre>`;
+      lastRunData = runData || {};
+      if (rawInputContainer) {
+        rawInputContainer.innerHTML = `<pre>${JSON.stringify(lastRunData, null, 2)}</pre>`;
+      }
     }
 
     function renderAgentTabs(agents) {
@@ -325,7 +327,6 @@ document.addEventListener('DOMContentLoaded', () => {
           break;
         case 'chatHistoryUpdated':
           if (data.agentId === currentAgentId) {
-            console.log('Updating chat history with:', data.messages);
             renderChatHistory(data.messages);
             renderMainChat(data.messages);
           }
@@ -336,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           break;
         case 'aiResponseUpdated':
-          if (data.agentId === currentAgentId) {
+          if (data.agentId === currentAgentId && aiResponseContainer) {
             aiResponseContainer.textContent = data.response;
           }
           break;
@@ -353,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           break;
         case 'agentLastRunDataUpdated':
-          if (data.agentId === currentAgentId) {
+          if (data.agentId === currentAgentId && rawInputContainer) {
             rawInputContainer.innerHTML = `<pre>${JSON.stringify(data.data, null, 2)}</pre>`;
           }
           break;
@@ -374,17 +375,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateLogLevelUI();
 
-    toggleRawInputButton.addEventListener('click', () => {
-      if (rawInputContainer.classList.contains('hidden')) {
-        rawInputContainer.classList.remove('hidden');
-        toggleRawInputButton.textContent = 'Hide Raw Input';
-      } else {
-        rawInputContainer.classList.add('hidden');
-        toggleRawInputButton.textContent = 'Show Raw Input';
-      }
-    });
+    if (toggleRawInputButton && rawInputContainer) {
+      toggleRawInputButton.addEventListener('click', () => {
+        if (rawInputContainer.classList.contains('hidden')) {
+          rawInputContainer.classList.remove('hidden');
+          toggleRawInputButton.textContent = 'Hide Raw Input';
+        } else {
+          rawInputContainer.classList.add('hidden');
+          toggleRawInputButton.textContent = 'Show Raw Input';
+        }
+      });
+    }
 
-    // Add debounce utility
     function debounce(func, wait) {
       let timeout;
       return function executedFunction(...args) {
@@ -397,7 +399,34 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    // Modify the updateUI call in the interval
     const debouncedUpdateUI = debounce(updateUI, 1000);
     setInterval(debouncedUpdateUI, 5000);
+
+    // Send message logic
+    if (sendMessageButton && userMessageInput) {
+      sendMessageButton.addEventListener('click', async () => {
+        const message = userMessageInput.value.trim();
+        if (!message || !currentAgentId) return;
+        
+        try {
+          userMessageInput.value = '';
+          
+          await fetch(`http://localhost:3000/agent/${currentAgentId}/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+          });
+          await updateUI();
+        } catch (err) {
+          console.error('Error sending message:', err);
+        }
+      });
+
+      userMessageInput.addEventListener('keyup', async (e) => {
+        if (e.key === 'Enter') {
+          sendMessageButton.click();
+          userMessageInput.value = '';
+        }
+      });
+    }
 });

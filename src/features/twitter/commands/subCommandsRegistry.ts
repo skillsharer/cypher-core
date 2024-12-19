@@ -8,6 +8,7 @@ import { twitterGetMentions } from './getMentions';
 import { twitterQuote } from './quote';
 import { twitterGetHomepage } from './getHomepage';
 import { twitterTweet } from './postTweet';
+import { twitterGetThread } from './getThread';
 
 export const twitterSubCommands: Command[] = [
   twitterGetTweets,
@@ -18,5 +19,6 @@ export const twitterSubCommands: Command[] = [
   twitterGetMentions,
   twitterQuote,
   twitterGetHomepage,
-  twitterTweet
+  twitterTweet,
+  twitterGetThread
 ];

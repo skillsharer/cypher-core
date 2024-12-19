@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { createLoggerServer } from '../gui/loggerServer';
+import { createLoggerServer, registerAgentInstance } from '../gui/loggerServer';
 import { Logger } from '../utils/logger';
 import { Agent } from '../agents/Agent';
 import readline from 'readline';
@@ -17,62 +17,31 @@ async function main() {
   // Initialize the CLI agent only
   const cliAgent = new Agent({ agentName: 'cliAgent' });
 
-  // Create readline interface for manual input
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
+  // Once the agent is registered by BaseAgent internally, we can get its ID from agentEventBus
+  // Wait briefly for the agentEventBus to register
+  const timeout = setTimeout(() => {
+    // Find the agent ID that matches this newly created cliAgent
+    // The agentEventBus registers the agent and returns an ID at BaseAgent construction
+    // So we can find it by name:
+    const allAgents = require('../utils/agentEventBus').agentEventBus.getAllAgents();
+    const match = allAgents.find((a: { name: string; id: string }) => a.name.includes('cliAgent'));
+    if (match) {
+      registerAgentInstance(match.id, cliAgent);
+    } else {
+      console.warn('cliAgent not found in agentEventBus.');
+    }
+  }, 500);
 
-  // Initialize conversation with the terminal prompt
-  console.log("\nTerminal ready. Type your messages (Ctrl+C to exit):");
-  console.log("simulator@{lm2_company}:~/$ ");
+  timeout.unref(); // Allow process to exit before timeout completes
 
-  // Manual CLI input loop
-  const getInput = () => {
-    rl.question('', async (input) => {
-      // Exit condition
-      if (input.toLowerCase() === 'exit' || input.toLowerCase() === 'quit') {
-        rl.close();
-        process.exit(0);
-      }
-
-      try {
-        // Add user message to agent's history
-        cliAgent.addUserMessage(input);
-
-        // Get agent's response
-        const result = await cliAgent.run();
-        
-        if (!result.success) {
-          console.error('Error getting response:', result.error);
-        } else {
-          // Get and display the agent's response
-          const response = cliAgent.getLastAgentMessage();
-          if (response) {
-            console.log('\n' + response.content);
-          }
-        }
-
-        // Prompt for next input
-        console.log("\nsimulator@{lm2_company}:~/$ ");
-        
-        // Continue the input loop
-        getInput();
-      } catch (error) {
-        console.error('Error processing input:', error);
-        getInput();
-      }
-    });
-  };
-
-  // Start the input loop
-  getInput();
+  // Instead of using readline for terminal input, we skip that:
+  // The GUI now can send messages to /agent/:id/message and receive responses
+  console.log("\nThe manualBackrooms agent is now running. Open the GUI at http://localhost:3000 to chat.\n");
 
   // Handle cleanup on exit
   process.on('SIGINT', async () => {
     console.log('\nShutting down...');
     await loggerServer.stop();
-    rl.close();
     process.exit(0);
   });
 }

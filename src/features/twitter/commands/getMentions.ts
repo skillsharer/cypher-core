@@ -27,6 +27,7 @@ export const twitterGetMentions: Command = {
       }
       return {
         output: `📫 Found ${mentions.length} unhandled mention${mentions.length === 1 ? '' : 's'}:\n${mentions.join('\n')}`
+          + "\nTo get the full thread of a tweet to reply, use twitter get-thread <tweetid>"
       };
     } catch (error) {
       return {

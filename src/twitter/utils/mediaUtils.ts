@@ -1,6 +1,15 @@
 import fetch from 'node-fetch';
 import { URL } from 'url';
-import { fileTypeFromBuffer } from 'file-type';
+import { type FileTypeResult } from 'file-type';
+
+// Initialize fileType module
+let fileTypeFromBuffer: ((buffer: Buffer) => Promise<FileTypeResult | undefined>) | undefined;
+
+// Initialize the module
+(async () => {
+  const fileType = await import('file-type');
+  fileTypeFromBuffer = fileType.fileTypeFromBuffer;
+})().catch(console.error);
 
 /**
  * Determines the media type based on URL or file extension
@@ -56,8 +65,12 @@ async function fetchMediaFromUrl(url: string): Promise<{ data: Buffer; mediaType
     
     // If content-type is missing or generic, detect it from buffer
     if (!contentType || contentType === 'application/octet-stream') {
-      const fileTypeResult = await fileTypeFromBuffer(buffer);
-      contentType = fileTypeResult ? fileTypeResult.mime : 'application/octet-stream';
+      if (fileTypeFromBuffer) {
+        const fileTypeResult = await fileTypeFromBuffer(buffer);
+        contentType = fileTypeResult ? fileTypeResult.mime : 'application/octet-stream';
+      } else {
+        contentType = 'application/octet-stream';
+      }
     }
     
     return {

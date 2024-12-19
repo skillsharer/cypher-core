@@ -28,7 +28,9 @@ export const twitterGetTweets: Command = {
       const result = await getTweets(args.username, args.limit);
       const formattedResult = result.join('\n');
       return {
-        output: formattedResult.startsWith('Error') ? `❌ ${formattedResult}` : `📝 ${formattedResult}`
+        output: formattedResult.startsWith('Error')
+          ? `❌ ${formattedResult}`
+          : `📝 ${formattedResult}\nTo get the full thread of a tweet to reply, use twitter get-thread <tweetid>`
       };
     } catch (error) {
       return {

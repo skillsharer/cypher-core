@@ -10,6 +10,7 @@ import InternetFeature from '../features/internet';
 import TwitterFeature from '../features/twitter';
 
 Logger.enable();
+Logger.setLevel('debug');
 
 /**
  * Configuration for CLI test environment

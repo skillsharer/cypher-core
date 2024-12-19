@@ -206,7 +206,7 @@ export function formatMemory(
     // Format focus tweet with the special heading
     if (focusTweet) {
         threadMemorySections.push(
-            '## THIS IS THE CURRENT TWEET YOU ARE REPLYING TO. GIVE YOUR FULL FOCUS TO REPLYING TO THIS TWEET.'
+            '### THIS IS THE CURRENT TWEET YOU ARE REPLYING TO. GIVE YOUR FULL FOCUS TO REPLYING TO THIS TWEET.'
         );
         threadMemorySections.push(formatMessage(focusTweet));
         threadMemorySections.push('');
@@ -437,8 +437,8 @@ export async function assembleTwitterInterface(
 
     // Create the text content with the updated memory
     const textContent = `
-# TWITTER INTERFACE
-This section contains your LIVE Twitter interface featuring context you need to reply to the current tweet.
+# SHOWING FULL TWEET THREAD OF TWEET ID ${tweetId}
+To reply to this tweet, use twitter reply-to-tweet <tweetid> <text> <mediaUrls>
 
 ${tweetMemory}
 

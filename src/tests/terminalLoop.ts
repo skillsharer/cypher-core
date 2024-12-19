@@ -17,9 +17,9 @@ async function main() {
 
   // Initialize TerminalCore with desired options and features
   const core = new TerminalCore({
-    maxActions: 2,
-    actionCooldownMs: 10000,
-    features: [InternetFeature, TwitterFeature],
+    maxActions: 30,
+    actionCooldownMs: 2000,
+    features: [TwitterFeature],
   });
 
   // Add event listeners for loop events

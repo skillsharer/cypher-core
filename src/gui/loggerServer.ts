@@ -4,6 +4,17 @@ import * as path from 'path';
 import { Logger } from '../utils/logger';
 import { agentEventBus } from '../utils/agentEventBus';
 import * as WebSocket from 'ws';
+import { Agent } from '../agents/Agent';
+
+const agentsMap: Record<string, Agent> = {};
+
+/**
+ * Allows external code (like manualBackrooms.ts) to register an agent instance
+ * so that the GUI can interact with it.
+ */
+export function registerAgentInstance(agentId: string, agentInstance: Agent) {
+  agentsMap[agentId] = agentInstance;
+}
 
 export class LoggerServer {
   private server!: http.Server;
@@ -31,15 +42,13 @@ export class LoggerServer {
       '.css': 'text/css'
     };
 
-    this.server = http.createServer((req, res) => {
-      // Handle CORS preflight
+    this.server = http.createServer(async (req, res) => {
       if (req.method === 'OPTIONS') {
         res.writeHead(204, corsHeaders);
         res.end();
         return;
       }
 
-      // API endpoints
       const url = req.url || '';
       const method = req.method || 'GET';
 
@@ -55,8 +64,8 @@ export class LoggerServer {
           const agentId = agentMatch[1];
           const endpoint = agentMatch[2];
 
-          const agent = agentEventBus.getAgent(agentId);
-          if (!agent) {
+          const agentInfo = agentEventBus.getAgent(agentId);
+          if (!agentInfo) {
             res.writeHead(404, corsHeaders);
             res.end(JSON.stringify({ error: 'Agent not found' }));
             return;
@@ -64,19 +73,19 @@ export class LoggerServer {
 
           if (endpoint === 'system-prompt') {
             res.writeHead(200, { 'Content-Type': 'text/plain', ...corsHeaders });
-            res.end(agent.systemPrompt);
+            res.end(agentInfo.systemPrompt);
             return;
           }
 
           if (endpoint === 'chat-history') {
             res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders });
-            res.end(JSON.stringify(agent.chatHistory));
+            res.end(JSON.stringify(agentInfo.chatHistory));
             return;
           }
 
           if (endpoint === 'ai-response') {
             res.writeHead(200, { 'Content-Type': 'text/plain', ...corsHeaders });
-            res.end(agent.aiResponse);
+            res.end(agentInfo.aiResponse);
             return;
           }
 
@@ -88,12 +97,12 @@ export class LoggerServer {
 
           if (endpoint === 'last-run-data') {
             res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders });
-            res.end(JSON.stringify(agent.lastRunData || {}));
+            res.end(JSON.stringify(agentInfo.lastRunData || {}));
             return;
           }
         }
 
-        // Serve the GUI files
+        // Serve GUI files
         let filePath = url === '/' ? '/loggerGUI.html' : url;
         filePath = path.join(__dirname, filePath);
 
@@ -114,11 +123,63 @@ export class LoggerServer {
         return;
       }
 
+      if (method === 'POST') {
+        const agentMatch = url.match(/^\/agent\/([^/]+)\/message$/);
+        if (agentMatch) {
+          const agentId = agentMatch[1];
+          const agentInfo = agentEventBus.getAgent(agentId);
+
+          if (!agentInfo) {
+            res.writeHead(404, corsHeaders);
+            res.end(JSON.stringify({ error: 'Agent not found' }));
+            return;
+          }
+
+          let body = '';
+          req.on('data', chunk => {
+            body += chunk;
+          });
+
+          req.on('end', async () => {
+            try {
+              const data = JSON.parse(body);
+              const message = data.message;
+              if (!message) {
+                res.writeHead(400, corsHeaders);
+                res.end(JSON.stringify({ error: 'No message provided' }));
+                return;
+              }
+
+              const agentInstance = agentsMap[agentId];
+              if (!agentInstance) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ error: 'Agent instance not available' }));
+                return;
+              }
+
+              agentInstance.addUserMessage(message);
+              const result = await agentInstance.run();
+
+              res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders });
+              res.end(JSON.stringify({ success: result.success, output: result.output }));
+            } catch (err) {
+              console.error('Error processing POST message:', err);
+              res.writeHead(500, corsHeaders);
+              res.end(JSON.stringify({ error: 'Internal server error' }));
+            }
+          });
+          return;
+        }
+
+        res.writeHead(404, corsHeaders);
+        res.end('Not Found');
+        return;
+      }
+
       res.writeHead(404, corsHeaders);
       res.end('Not Found');
     });
 
-    // Add error handling
     this.server.on('error', (error: any) => {
       if (error.code === 'EADDRINUSE') {
         console.log(`Port ${this.port} is already in use. Logger GUI server may already be running.`);
@@ -132,11 +193,9 @@ export class LoggerServer {
     this.wss = new WebSocket.Server({ port: this.wsPort });
 
     this.wss.on('connection', (ws) => {
-      // Send initial state
       const agents = agentEventBus.getAllAgents();
       ws.send(JSON.stringify({ type: 'agents', agents }));
 
-      // Define event handlers specific to this connection
       const chatHistoryUpdatedHandler = (data: any) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'chatHistoryUpdated', ...data }));
@@ -161,25 +220,31 @@ export class LoggerServer {
         }
       };
 
+      const newAgentSessionHandler = (data: any) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'newAgentSession', ...data }));
+        }
+      };
+
       const logHandler = (log: any) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'logAdded', log }));
         }
       };
 
-      // Add event listeners
       agentEventBus.on('chatHistoryUpdated', chatHistoryUpdatedHandler);
       agentEventBus.on('systemPromptUpdated', systemPromptUpdatedHandler);
       agentEventBus.on('aiResponseUpdated', aiResponseUpdatedHandler);
       agentEventBus.on('agentLastRunDataUpdated', agentLastRunDataUpdatedHandler);
+      agentEventBus.on('newAgentSession', newAgentSessionHandler);
       Logger.on('log', logHandler);
 
-      // Remove listeners when the WebSocket connection closes
       ws.on('close', () => {
         agentEventBus.removeListener('chatHistoryUpdated', chatHistoryUpdatedHandler);
         agentEventBus.removeListener('systemPromptUpdated', systemPromptUpdatedHandler);
         agentEventBus.removeListener('aiResponseUpdated', aiResponseUpdatedHandler);
         agentEventBus.removeListener('agentLastRunDataUpdated', agentLastRunDataUpdatedHandler);
+        agentEventBus.removeListener('newAgentSession', newAgentSessionHandler);
         Logger.removeListener('log', logHandler);
       });
     });
@@ -204,21 +269,40 @@ export class LoggerServer {
   public stop() {
     return new Promise<void>((resolve, reject) => {
       try {
-        this.wss.close(() => {
-          this.server.close(() => {
+        let wssClosed = !this.wss; // If wss is undefined, consider it closed
+        let serverClosed = !this.server; // If server is undefined, consider it closed
+
+        const tryResolve = () => {
+          if (wssClosed && serverClosed) {
             console.log('Logger GUI server stopped');
             resolve();
+          }
+        };
+
+        if (!wssClosed) {
+          this.wss.close(() => {
+            wssClosed = true;
+            tryResolve();
           });
-        });
+        }
+
+        if (!serverClosed) {
+          this.server.close(() => {
+            serverClosed = true;
+            tryResolve();
+          });
+        }
+
+        // In case servers are already closed
+        tryResolve();
       } catch (error) {
         console.error('Failed to stop logger GUI server:', error);
-        reject(error);
+        resolve(); // Proceed even if there's an error
       }
     });
   }
 }
 
-// Export a function to create the server
 export function createLoggerServer(port?: number, wsPort?: number) {
   return new LoggerServer(port, wsPort);
 }

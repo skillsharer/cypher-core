@@ -1,15 +1,13 @@
-// Core terminal command execution logic with parameter parsing
-
 import { parse } from 'shell-quote';
 import { getAllCommands, getCommand } from './commandRegistry';
 import { logTerminalOutput } from './terminalLogger';
 import type { CommandParameter } from './types/commands';
+import { Logger } from '../utils/logger';
 
 /**
  * Parses argument tokens into named parameters based on parameter definitions.
- * @param tokens - The array of argument tokens.
- * @param parameters - The command's parameter definitions.
- * @returns An object mapping parameter names to their values.
+ * Modified: If the parameter name is 'args' and it's the last parameter, we store all leftover tokens as an array.
+ * Otherwise, if it's the last required string param, we aggregate leftover tokens into a single string.
  */
 function parseArguments(
   tokens: string[],
@@ -18,8 +16,27 @@ function parseArguments(
   const args: { [key: string]: any } = {};
   let tokenIndex = 0;
 
-  for (const param of parameters) {
+  for (let i = 0; i < parameters.length; i++) {
+    const param = parameters[i];
     let value: any;
+
+    const isLastParam = i === parameters.length - 1;
+
+    // If this is the last param and param.name === 'args', store leftover tokens as an array
+    if (isLastParam && param.name === 'args') {
+      const leftoverTokens = tokens.slice(tokenIndex);
+      // Store them directly as an array
+      args[param.name] = leftoverTokens;
+      break;
+    }
+
+    // If this is the last param, required, and string, aggregate all leftover tokens
+    if (isLastParam && param.required && (param.type === 'string' || !param.type)) {
+      const leftoverTokens = tokens.slice(tokenIndex);
+      value = leftoverTokens.join(' ');
+      args[param.name] = value;
+      break;
+    }
 
     if (tokenIndex < tokens.length) {
       value = tokens[tokenIndex++];
@@ -33,15 +50,15 @@ function parseArguments(
     if (param.type && value !== undefined) {
       switch (param.type) {
         case 'number':
-          value = Number(value);
-          if (isNaN(value)) {
+          const num = Number(value);
+          if (isNaN(num)) {
             throw new Error(`Parameter '${param.name}' must be a number.`);
           }
+          value = num;
           break;
         case 'boolean':
           value = value === 'true' || value === true;
           break;
-        // Additional types can be added as needed
       }
     }
 
@@ -51,25 +68,10 @@ function parseArguments(
   return args;
 }
 
-/**
- * Pre-processes the command line to escape special characters in quoted strings
- * @param commandLine - Raw command line input
- * @returns Processed command line with escaped special characters
- */
 function preprocessCommandLine(commandLine: string): string {
-  // Match quoted strings (both single and double quotes)
-  return commandLine.replace(/(["'])(.*?)\1/g, (match, quote, content) => {
-    // Escape $ symbols within quoted strings
-    const escaped = content.replace(/\$/g, '\\$');
-    return `${quote}${escaped}${quote}`;
-  });
+  return commandLine;
 }
 
-/**
- * Executes multiple terminal commands sequentially and bundles their outputs
- * @param commands - Array of command objects containing the commands to execute
- * @returns Combined execution result with all outputs
- */
 export async function executeMultipleCommands(
   commands: { command: string }[]
 ): Promise<{
@@ -85,7 +87,6 @@ export async function executeMultipleCommands(
     executedCommands.push(result.command);
   }
 
-  // Bundle all outputs together with command prefixes
   const bundledOutput = executedCommands.map((cmd, index) => 
     `$ ${cmd}\n${outputs[index]}`
   ).join('\n\n');
@@ -96,11 +97,6 @@ export async function executeMultipleCommands(
   };
 }
 
-/**
- * Executes a single terminal command and returns the result.
- * @param commandLine - The command line input as a string.
- * @returns The command execution result.
- */
 export async function executeCommand(
   commandLine: string
 ): Promise<{
@@ -109,6 +105,7 @@ export async function executeCommand(
 }> {
   if (!commandLine) {
     const output = 'Error: No command provided';
+    Logger.info(output);
     logTerminalOutput(commandLine, output);
     return {
       command: '',
@@ -116,16 +113,13 @@ export async function executeCommand(
     };
   }
 
-  // Preprocess the command line before parsing
   const processedCommand = preprocessCommandLine(commandLine.trim());
   const tokens = parse(processedCommand);
   
-  // Unescape the tokens after parsing
   const unescapedTokens = tokens.map(token => 
     typeof token === 'string' ? token.replace(/\\\$/g, '$') : token
   );
 
-  // Add type guard to ensure we have a string command name
   const commandToken = unescapedTokens[0];
   const commandName = typeof commandToken === 'string' ? commandToken : '';
   const argsTokens = unescapedTokens.slice(1).filter((token): token is string => typeof token === 'string');

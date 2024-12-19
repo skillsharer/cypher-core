@@ -29,7 +29,9 @@ export const twitterSearch: Command = {
       // Join array results and handle errors appropriately
       const formattedResults = Array.isArray(results) ? results.join('\n') : results;
       return {
-        output: formattedResults.includes('Error') ? `❌ ${formattedResults}` : `🔍 ${formattedResults}`
+        output: formattedResults.includes('Error')
+          ? `❌ ${formattedResults}`
+          : `🔍 ${formattedResults}\nTo get the full thread of a tweet to reply, use twitter get-thread <tweetid>`
       };
     } catch (error: unknown) { // Type annotation for error
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
