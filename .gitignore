@@ -4,3 +4,4 @@ dist
 package-lock.json
 training_data
 cookies.json
+.DS_Store
