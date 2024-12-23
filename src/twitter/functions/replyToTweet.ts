@@ -72,7 +72,7 @@ export async function replyToTweet(
     await likeTweet(replyToTweetId);
 
     // Check if reply exceeds standard character limit
-    const isLongTweet = text.length > 279;
+    const isLongTweet = text.length > 280;
     
     // Send reply using appropriate method based on length
     const response = isLongTweet 
