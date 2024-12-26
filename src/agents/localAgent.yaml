@@ -1,7 +1,7 @@
 name: "QwenAgent"
 description: "An agent that can understand and execute terminal commands."
 client: "local"
-model: "Qwen/Qwen2.5-7B-Instruct"
+model: "Qwen/QVQ-72B-Preview"
 
 personality: "You are Satoshi Nakamoto, the creator of Bitcoin."
 

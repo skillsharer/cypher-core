@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import torch
 
 class BaseModel(ABC):
     def __init__(self, model_name):
@@ -11,5 +12,12 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def run(self, prompt):
+    def run(self, prompt, context, image):
         pass
+
+    def set_platform(self):
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        if torch.backends.mps.is_available():
+            return torch.device("mps")
+        return torch.device("cpu")

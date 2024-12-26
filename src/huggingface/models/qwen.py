@@ -11,13 +11,6 @@ class QwenModel(BaseModel):
         self.tokenizer = None
         self.platform = self.set_platform()
 
-    def set_platform(self):
-        if torch.cuda.is_available():
-            return torch.device("cuda")
-        if torch.backends.mps.is_available():
-            return torch.device("mps")
-        return torch.device("cpu")
-
     async def load(self):
         self.model = AutoModelForCausalLM.from_pretrained(self.model_name).to(self.platform)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
@@ -31,9 +24,9 @@ class QwenModel(BaseModel):
         text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         return self.tokenizer([text], return_tensors='pt').to(self.platform)
     
-    async def run(self, prompt: str, context: str):
+    async def run(self, prompt: str, context: str, image: None):
         # Encode input
-        encoded_input = await self.encode(prompt, context)
+        encoded_input = await self.encode(prompt, context, image)
         input_ids = encoded_input['input_ids']
         attention_mask = encoded_input.get('attention_mask', None)
         

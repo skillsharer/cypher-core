@@ -26,7 +26,7 @@ export class QwenClient implements ModelClient {
 
   async chatCompletion(params: any): Promise<any> {
     try {
-      const response = await axios.post(`${this._serverUrl}/generate`, params);
+      const response = await axios.post(`${this._serverUrl}/text_and_image_inference`, params);
       return response.data;
     } catch (error) {
       throw new Error(`Error during chat completion: ${(error as Error).message}`);
