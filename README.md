@@ -224,6 +224,7 @@ await core.runLoop();
 
 - InternetFeature: allows the agent to search the internet. REQUIRES PERPLEXITY API KEY in .env
 - TwitterFeature: full twitter package for the agent. REQUIRES SUPABASE DB to be setup and twitter login set in the .env
+(see docs/database.md for supabase SQL setup)
 
 Now the agent can execute the `say-hello` command autonomously if needed.
 
