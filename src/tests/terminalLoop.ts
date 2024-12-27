@@ -3,8 +3,8 @@ dotenv.config();
 
 import { Logger } from '../utils/logger';
 import { createLoggerServer } from '../gui/loggerServer';
-import InternetFeature from '../features/internet';
 import { TerminalCore } from '../terminal/terminalCore';
+import InternetFeature from '../features/internet';
 import TwitterFeature from '../features/twitter';
 
 // Main async function to handle all async operations
@@ -19,7 +19,7 @@ async function main() {
   const core = new TerminalCore({
     maxActions: 30,
     actionCooldownMs: 2000,
-    features: [TwitterFeature],
+    features: [InternetFeature, TwitterFeature],
   });
 
   // Add event listeners for loop events

@@ -7,6 +7,7 @@
     "test": "tests"
   },
   "scripts": {
+    "test": "bun mainTests.ts",
     "build": "tsc"
   },
   "author": "bootoshi",

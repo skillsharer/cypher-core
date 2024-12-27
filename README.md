@@ -15,7 +15,7 @@ Agents are defined through YAML files rather than hard-coded configurations, mak
 
 ## QUICK START
 1. To test built in implementations, add an anthropic ENV key
-2. Run `bun mainTests.ts` and pick a test via CLI
+2. Run `npm run test` and pick a test via CLI to play with the system
 3. To see agent terminal logs, open localhost:3000 in browser
 
 ## Agent Configuration & Loading
@@ -219,6 +219,11 @@ const core = new TerminalCore({
 await core.init();
 await core.runLoop();
 ```
+
+## FEATURES THAT COME WITH THE PACKAGE
+
+- InternetFeature: allows the agent to search the internet. REQUIRES PERPLEXITY API KEY in .env
+- TwitterFeature: full twitter package for the agent. REQUIRES SUPABASE DB to be setup and twitter login set in the .env
 
 Now the agent can execute the `say-hello` command autonomously if needed.
 

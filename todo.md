@@ -1,5 +1,6 @@
 to do:
 
+- make the .yaml process easier, have the new agent initilization take a .yaml in code or optional from a file
 i have to modularize existing cypher genesis components, specifically database, memories, notes, & twitter- make the rest custom
 - add twitter commands as a modular tool (DONE, figure out supabase database )
 - add note taking as a tool, add notes, view notes (vd query), edit notes, delete notes
