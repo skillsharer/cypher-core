@@ -17,6 +17,7 @@
 ## QoL UPDATES TO ADD:
 - make the core terminal personality something easy to configure 
 - make the .yaml process easier, have the new agent initilization take a .yaml in code or optional from a file
+- add a pause/resume feature to the agent GUI
 
 the goal is to create a AI computer system that has new seeds daily so everyday is unique. the art is in the unknown of what the ai will do today, and how the ai grows overtime
 
