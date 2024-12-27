@@ -39,7 +39,7 @@ export async function sendTweet(
     const mediaData = mediaUrls ? await prepareMediaData(mediaUrls) : undefined;
 
     // Check if tweet exceeds standard character limit
-    const isLongTweet = text.length > 279;
+    const isLongTweet = text.length > 280;
     
     // Send tweet using appropriate method based on length
     const response = isLongTweet 
