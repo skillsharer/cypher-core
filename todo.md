@@ -1,19 +1,26 @@
-to do:
+# TO DO
 
-i have to modularize existing cypher genesis components, specifically database, memories, notes, & twitter- make the rest custom
-- add twitter commands as a modular tool (DONE, figure out supabase database )
-- add note taking as a tool, add notes, view notes (vd query), edit notes, delete notes
-- add memories as a tool
-- make the core terminal personality something easy to edit 
+## CORE UPDATES TO ADD:
+- add gemini to baseagent
+- add gemini to terminal agent
+- add agent vision to agents without vision tech by routing the image to a vision model, get back detailed text, and feed back to agent
+- add orchestrator agent & agent grouping process
+- add an inbox feature to the terminal core, so proxy agents can send messages to the terminal core and the terminal core can send messages to the proxy agents
 
+## FEATURES TO ADD:
+- add note taking as a feature, add notes, view notes, edit notes, delete notes
+- add memories as a feature, tapped into cloud memory
+- add talking to another AI as a feature, like exo-query claude 
+- add meme gen as a feature
+- add bitcoin wallet/inscribing functionality as a feature
+
+## QoL UPDATES TO ADD:
+- make the core terminal personality something easy to configure 
+- make the .yaml process easier, have the new agent initilization take a .yaml in code or optional from a file
+- add a pause/resume feature to the agent GUI
 
 the goal is to create a AI computer system that has new seeds daily so everyday is unique. the art is in the unknown of what the ai will do today, and how the ai grows overtime
 
-
-turning the terminalLoop into a terminal agent itself with tools
-
-- similar to the infinite backrooms script, we have cliUser (satoshi) interacting with the terminal (cliAgent)
-- to actually connect the cliAgent with real commands, we give it tools and function calling, with the ability to talk back normally, probably requires altering base agent
-- when cliUser (satoshi) wants to use a command, terminal will call the tool with the command, then reply back to Satoshi with the output of the tool plus its own crazy insights, with real functionality
-- when it comes to creating these tools, we basically grab the features and convert them into tools
-- but what about sub tools like the twitter environment one? i think that can be displayed in a specific way, so every main feature tool is its own tool. since twitter is the main tool with sub commands, then all the sub commands would be called in its tool and can be a part of the description. the arguments dynamic. the arguments are then input into the actual terminal for the tool to get a result back
+### LOOK INTO:
+- turning the terminalLoop into a terminal agent itself with tools
+(not really needed, if talking to another AI is a feature? that counst as a seed)
