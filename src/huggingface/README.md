@@ -34,7 +34,7 @@ The `localAgent.yaml` configuration specifies the use of the Qwen model and prov
    ```
 
 3. **Configure the Agent**:
-   Ensure `localAgent.yaml` is set up with the correct model and server URL:
+   Ensure `localAgent_terminal.yaml` or `localAgent_tools.yaml` is set up with the correct model and server URL:
    ```yaml
    name: "QwenAgent"
    description: "An agent that can understand and execute terminal commands."
@@ -50,7 +50,7 @@ The `localAgent.yaml` configuration specifies the use of the Qwen model and prov
    import { Logger } from './src/utils/logger';
 
    async function main() {
-     const myAgent = new Agent({ agentConfigPath: './src/agents/localAgent.yaml' });
+     const myAgent = new Agent({ agentConfigPath: './src/agents/localAgent_terminal.yaml' });
      await myAgent.initialize();
      const result = await myAgent.run("Gather the latest information about bitcoin.");
      Logger.debug(result);
