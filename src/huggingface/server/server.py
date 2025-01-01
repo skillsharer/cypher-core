@@ -25,9 +25,7 @@ async def generate():
     if model is None:
         return jsonify({"message": "Model not loaded."})
     data = await request.get_json()
-    context = data['system']
-    prompt = data['messages'][0]['content'][0]['text']
-    response = await model.run(prompt, context)
+    response = await model.run(data)
     return jsonify(response)
 
 if __name__ == '__main__':
