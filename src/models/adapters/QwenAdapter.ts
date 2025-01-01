@@ -93,7 +93,6 @@ export class QwenAdapter extends ModelAdapter {
   }
 
   public processResponse(response: any): ProcessedResponse {
-    // TODO: Implement tool usage
     if (!response) {
       Logger.error('[QwenAdapter] Got no response from model.');
       return { functionCalls: [] };
@@ -101,14 +100,37 @@ export class QwenAdapter extends ModelAdapter {
     Logger.debug('[QwenAdapter] Processing response:', response);
 
     const assistantMarker = 'assistant';
-    const markerIndex = response.indexOf(assistantMarker);
+    const markerIndex = response.lastIndexOf(assistantMarker);
     const contentAfterMarker = markerIndex !== -1 ? response.substring(markerIndex + assistantMarker.length).trim() : '';
 
     const aiMessage = {
       role: 'assistant',
-      content: contentAfterMarker
+      content: contentAfterMarker.replace(/\\\\/g, '\\')
     };
 
-    return { aiMessage, functionCalls: [] };
+    const toolUseMarker = 'tool_use:';
+    const toolUseIndex = response.indexOf(toolUseMarker);
+    const functionCalls: FunctionCall[] = [];
+
+    if (toolUseIndex !== -1) {
+      const toolUseContent = response.substring(toolUseIndex + toolUseMarker.length).trim();
+      const toolUseLines = toolUseContent.split('\n').map(line => line.trim()).filter(line => line.startsWith('-'));
+      Logger.debug('[QwenAdapter] Found tool use lines:', toolUseLines);
+      toolUseLines.forEach(line => {
+        const [functionNamePart, functionArgsPart] = line.substring(1).split(/:(.+)/).map(part => part.trim());
+        if (functionNamePart && functionArgsPart) {
+          try {
+            const parsedArgs = JSON.parse(functionArgsPart);
+            functionCalls.push({ functionName: functionNamePart, functionArgs: parsedArgs });
+          } catch (error) {
+            Logger.error('[QwenAdapter] Failed to parse function arguments:', functionArgsPart, error);
+          }
+        }
+      });
+    }
+
+    Logger.debug('[QwenAdapter] Processed response:', { aiMessage, functionCalls });
+
+    return { aiMessage, functionCalls };
   }
 }
