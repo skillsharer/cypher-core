@@ -24,13 +24,11 @@ export class AiStudioAdapter extends ModelAdapter {
 
     if (tools && tools.length > 0) {
       params.tools = tools.map(t => ({
-        type: "function",
-        function: {
-          name: t.function.name,
-          description: t.function.description,
-          parameters: t.function.parameters
-        }
+        name: t.function.name,
+        description: t.function.description,
+        parameters: t.function.parameters
       }));
+      params.tools = {"functionDeclarations": params.tools};
     }
 
     if (toolChoice) {
@@ -48,7 +46,6 @@ export class AiStudioAdapter extends ModelAdapter {
 
   public formatTools(tools: Tool[]): any[] {
     return tools.map(tool => ({
-      type: "function",
       function: {
         name: tool.function.name,
         description: tool.function.description,
@@ -62,19 +59,30 @@ export class AiStudioAdapter extends ModelAdapter {
   }
 
   public processResponse(response: any): ProcessedResponse {
-    // Todo: Implement function calls
     if (!response || !response.response.candidates || response.response.candidates.length === 0) {
-        Logger.error('[AiStudioAdapter] Got no response from model.');
-        return { functionCalls: [] };
-    }
+      Logger.error('[AiStudioAdapter] Got no response from model.');
+      return { functionCalls: [] };
+    } 
     Logger.debug('[AiStudioAdapter] Processing response:', response);
     const candidate = response.response.candidates[0];
-    const contentParts = candidate.content?.parts[0].text || [];
-    const contentAfterMarker = contentParts.replace(/```json\n|\n```/g, '');
+    const contentParts = candidate.content?.parts || [];
     const aiMessage = {
         role: 'assistant',
-        content: contentAfterMarker
+        content: ''
     };
-    return { aiMessage, functionCalls: [] };
-    }
+    const functionCalls: FunctionCall[] = [];
+
+    contentParts.forEach((part: any) => {
+        if (part.functionCall) {
+            const functionName = part.functionCall.name;
+            const functionArgs = part.functionCall.args;
+            functionCalls.push({ functionName, functionArgs });
+        } else if (part.text) {
+            aiMessage.content += part.text;
+        }
+    });
+
+    Logger.debug('[AiStudioAdapter] Processed response:', { aiMessage, functionCalls });
+    return { aiMessage, functionCalls };
+  }
 }
