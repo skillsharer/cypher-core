@@ -69,9 +69,8 @@ export class AiStudioAdapter extends ModelAdapter {
     }
     Logger.debug('[AiStudioAdapter] Processing response:', response);
     const candidate = response.response.candidates[0];
-    const contentParts = candidate.content?.parts || [];
-    const contentAfterMarker = contentParts.map((part: { text: string }) => part.text).join(' ').trim();
-
+    const contentParts = candidate.content?.parts[0].text || [];
+    const contentAfterMarker = contentParts.replace(/```json\n|\n```/g, '');
     const aiMessage = {
         role: 'assistant',
         content: contentAfterMarker
